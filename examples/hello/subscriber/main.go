@@ -11,7 +11,7 @@ import (
 )
 
 var topic = flag.String("topic", hello.DefaultTopicName, "the topic to subscribe to")
-var subscriptionID = flag.String("subID", "value", "the subscription ID for the topic")
+var subscriptionID = flag.String("subID", hello.DefaultSubscriberID, "the subscription ID for the topic")
 
 func main() {
 	flag.Parse()
