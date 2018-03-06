@@ -151,7 +151,11 @@ func mustWrapIntoSQSMessage(testMsg proto.Message, receiptHandle *string) *sqs.M
 // wrapIntoSQSMessage helps wrap a given proto.Message into the format used when
 // receiving a message from an SQS queue
 func wrapIntoSQSMessage(testMsg proto.Message, receiptHandle *string) (*sqs.Message, error) {
-	encoded, err := encodeToSNSMessage(testMsg)
+	bytes, mErr := proto.Marshal(testMsg)
+	if mErr != nil {
+		return nil, fmt.Errorf("did not expect marshalling testMsg to return err, but returned: %v", mErr)
+	}
+	encoded, err := encodeToSNSMessage(bytes)
 	if err != nil {
 		return nil, fmt.Errorf("did not expect encodeToSNSMessage to return err, but returned: %v", err)
 	}

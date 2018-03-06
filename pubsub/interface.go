@@ -3,8 +3,6 @@ package pubsub
 import (
 	"context"
 	"time"
-
-	"github.com/golang/protobuf/proto"
 )
 
 // Publisher defines the basic interface for publishing messages to a message
@@ -12,7 +10,7 @@ import (
 type Publisher interface {
 	// Publishes the given message to the message broker. The topic should be
 	// known to the publisher prior to making this call
-	Publish(context.Context, proto.Message) error
+	Publish(context.Context, []byte) error
 }
 
 // AtMostOnceSubscriber defines the interface for a subscriber with at-most-once

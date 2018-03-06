@@ -5,12 +5,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/infobloxopen/atlas-pubsub/pubsub"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sns/snsiface"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
-	"github.com/infobloxopen/atlas-pubsub/pubsub"
 )
 
 // NewAtMostOnceSubscriber creates an AWS message broker that will subcribe to

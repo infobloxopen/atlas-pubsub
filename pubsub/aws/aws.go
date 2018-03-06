@@ -14,7 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/sns/snsiface"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
-	"github.com/golang/protobuf/proto"
 )
 
 // some arbitrary prefix I came up with to help distinguish between aws broker
@@ -217,12 +216,8 @@ func ensureQueueSubscription(queueURL, topicArn *string, snsClient snsiface.SNSA
 
 // encodeToSNSMessage converts the given proto message into a string to be used
 // by SNS
-func encodeToSNSMessage(msg proto.Message) (*string, error) {
-	bytes, err := proto.Marshal(msg)
-	if err != nil {
-		return nil, err
-	}
-	return aws.String(base64.StdEncoding.EncodeToString(bytes)), nil
+func encodeToSNSMessage(msg []byte) (*string, error) {
+	return aws.String(base64.StdEncoding.EncodeToString(msg)), nil
 }
 
 // decodeFromSQSMessage takes the sqs.Message.Body and unmarshals it into a []byte
