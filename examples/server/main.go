@@ -1,5 +1,8 @@
 package main
 
+// An example pubsub grpc server. This uses the aws message broker as its
+// underlying messaging system.
+
 import (
 	"context"
 	"flag"
@@ -7,6 +10,8 @@ import (
 	"log"
 	"net"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/infobloxopen/atlas-pubsub/pubsub"
 	pubsubaws "github.com/infobloxopen/atlas-pubsub/pubsub/aws"
 	pubsubgrpc "github.com/infobloxopen/atlas-pubsub/pubsub/grpc"
@@ -24,7 +29,8 @@ func main() {
 	}
 	grpcServer := grpc.NewServer()
 
-	pubsubServer, err := newAWSPubSubServer()
+	cfg := aws.NewConfig().WithCredentials(credentials.NewEnvCredentials())
+	pubsubServer, err := newAWSPubSubServer(cfg)
 	if err != nil {
 		log.Fatalf("failed to create aws pubsub server: %v", err)
 	}
@@ -32,12 +38,14 @@ func main() {
 	grpcServer.Serve(lis)
 }
 
-func newAWSPubSubServer() (pubsubgrpc.PubSubServer, error) {
+// newAWSPubSubServer creates a new grpc PubSub server using the broker
+// implementation for AWS
+func newAWSPubSubServer(config *aws.Config) (pubsubgrpc.PubSubServer, error) {
 	pubFactory := func(ctx context.Context, topic string) (pubsub.Publisher, error) {
-		return pubsubaws.NewPublisher(nil, topic)
+		return pubsubaws.NewPublisher(config, topic)
 	}
 	subFactory := func(ctx context.Context, topic, subscriptionID string) (pubsub.AtLeastOnceSubscriber, error) {
-		return pubsubaws.NewAtLeastOnceSubscriber(nil, topic, subscriptionID)
+		return pubsubaws.NewAtLeastOnceSubscriber(config, topic, subscriptionID)
 	}
 	return pubsubgrpc.NewPubSubServer(pubFactory, subFactory), nil
 }

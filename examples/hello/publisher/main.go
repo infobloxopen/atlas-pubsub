@@ -1,5 +1,8 @@
 package main
 
+// A simple example publisher app. Writes a hello message to a grpc pubsub server.
+// You can run the server provided in this examples section.
+
 import (
 	"context"
 	"flag"

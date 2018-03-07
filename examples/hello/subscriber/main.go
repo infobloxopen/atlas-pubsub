@@ -1,5 +1,8 @@
 package main
 
+// A simple example subscriber app. Listens to messages from a grpc PubSub server.
+// You can run the server provided in this examples section.
+
 import (
 	"context"
 	"flag"
