@@ -5,48 +5,41 @@ import (
 	"sync"
 	"time"
 
-	"github.com/infobloxopen/atlas-pubsub/pubsub"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sns/snsiface"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
+	"github.com/infobloxopen/atlas-pubsub/pubsub"
 )
 
-// NewAtMostOnceSubscriber creates an AWS message broker that will subcribe to
-// the given topic with at-most-once message delivery semantics
-// TODO: info on permissions needed within the config to make this work
-func NewAtMostOnceSubscriber(config *aws.Config, topic string) (pubsub.AtMostOnceSubscriber, error) {
-	panic("not implemented")
-}
-
-// NewAtLeastOnceSubscriber creates an AWS message broker that will subscribe to
+// NewSubscriber creates an AWS message broker that will subscribe to
 // the given topic with at-least-once message delivery semantics for the given
 // subscriptionID
 // TODO: info on permissions needed within the config to make this work
-func NewAtLeastOnceSubscriber(config *aws.Config, topic, subscriptionID string) (pubsub.AtLeastOnceSubscriber, error) {
+func NewSubscriber(config *aws.Config, topic, subscriptionID string) (pubsub.Subscriber, error) {
 	sess, err := ensureSession(config)
 	if err != nil {
 		return nil, err
 	}
 
-	return newAtLeastOnceSubscriber(sns.New(sess), sqs.New(sess), topic, subscriptionID)
+	return newSubscriber(sns.New(sess), sqs.New(sess), topic, subscriptionID)
 }
 
-func newAtLeastOnceSubscriber(snsClient snsiface.SNSAPI, sqsClient sqsiface.SQSAPI, topic, subscriptionID string) (pubsub.AtLeastOnceSubscriber, error) {
+func newSubscriber(snsClient snsiface.SNSAPI, sqsClient sqsiface.SQSAPI, topic, subscriptionID string) (pubsub.Subscriber, error) {
 	queueURL, err := ensureSubscription(topic, subscriptionID, snsClient, sqsClient)
 	if err != nil {
 		return nil, err
 	}
 
-	return &atLeastOnceSubscriber{
+	return &awsSubscriber{
 		sns:      snsClient,
 		sqs:      sqsClient,
 		queueURL: queueURL,
 	}, nil
 }
 
-type atLeastOnceSubscriber struct {
+type awsSubscriber struct {
 	sns snsiface.SNSAPI
 	sqs sqsiface.SQSAPI
 
@@ -54,8 +47,8 @@ type atLeastOnceSubscriber struct {
 	wg       sync.WaitGroup
 }
 
-func (s *atLeastOnceSubscriber) Start(ctx context.Context) (<-chan pubsub.AtLeastOnceMessage, <-chan error) {
-	channel := make(chan pubsub.AtLeastOnceMessage)
+func (s *awsSubscriber) Start(ctx context.Context) (<-chan pubsub.Message, <-chan error) {
+	channel := make(chan pubsub.Message)
 	errChannel := make(chan error)
 	go func() {
 		defer close(channel)
@@ -74,7 +67,7 @@ func (s *atLeastOnceSubscriber) Start(ctx context.Context) (<-chan pubsub.AtLeas
 	return channel, errChannel
 }
 
-func (s *atLeastOnceSubscriber) pull(ctx context.Context, channel chan pubsub.AtLeastOnceMessage, errChannel chan error) {
+func (s *awsSubscriber) pull(ctx context.Context, channel chan pubsub.Message, errChannel chan error) {
 	s.wg.Add(1)
 	defer s.wg.Done()
 	resp, err := s.sqs.ReceiveMessageWithContext(ctx, &sqs.ReceiveMessageInput{
@@ -90,7 +83,7 @@ func (s *atLeastOnceSubscriber) pull(ctx context.Context, channel chan pubsub.At
 			if err != nil {
 				errChannel <- err
 			} else {
-				channel <- &atLeastOnceMessage{
+				channel <- &awsMessage{
 					ctx:        ctx,
 					subscriber: s,
 					messageID:  *msg.ReceiptHandle,
@@ -101,7 +94,7 @@ func (s *atLeastOnceSubscriber) pull(ctx context.Context, channel chan pubsub.At
 	}
 }
 
-func (s *atLeastOnceSubscriber) AckMessage(ctx context.Context, messageID string) error {
+func (s *awsSubscriber) AckMessage(ctx context.Context, messageID string) error {
 	_, error := s.sqs.DeleteMessage(&sqs.DeleteMessageInput{
 		QueueUrl:      s.queueURL,
 		ReceiptHandle: aws.String(messageID),
@@ -109,26 +102,26 @@ func (s *atLeastOnceSubscriber) AckMessage(ctx context.Context, messageID string
 	return error
 }
 
-func (s *atLeastOnceSubscriber) ExtendAckDeadline(ctx context.Context, messageID string, newDuration time.Duration) error {
+func (s *awsSubscriber) ExtendAckDeadline(ctx context.Context, messageID string, newDuration time.Duration) error {
 	panic("not implemented")
 }
 
-type atLeastOnceMessage struct {
+type awsMessage struct {
 	ctx        context.Context
 	messageID  string
 	message    []byte
-	subscriber *atLeastOnceSubscriber
+	subscriber *awsSubscriber
 }
 
-func (m *atLeastOnceMessage) MessageID() string {
+func (m *awsMessage) MessageID() string {
 	return m.messageID
 }
-func (m *atLeastOnceMessage) Message() []byte {
+func (m *awsMessage) Message() []byte {
 	return m.message
 }
-func (m *atLeastOnceMessage) ExtendAckDeadline(time.Duration) error {
+func (m *awsMessage) ExtendAckDeadline(time.Duration) error {
 	panic("not implemented")
 }
-func (m *atLeastOnceMessage) Ack() error {
+func (m *awsMessage) Ack() error {
 	return m.subscriber.AckMessage(m.ctx, m.MessageID())
 }

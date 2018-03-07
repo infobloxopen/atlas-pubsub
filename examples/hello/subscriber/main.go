@@ -22,7 +22,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to dial to grpc server: %v", err)
 	}
-	s := pubsubgrpc.NewSubscriberFromConnection(*topic, *subscriptionID, conn)
+	s := pubsubgrpc.NewSubscriber(*topic, *subscriptionID, conn)
 
 	c, e := s.Start(context.Background())
 

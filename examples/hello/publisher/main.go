@@ -23,7 +23,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to dial to grpc server: %v", err)
 	}
-	p := pubsubgrpc.NewPublisherFromConnection(*topic, conn)
+	p := pubsubgrpc.NewPublisher(*topic, conn)
 	for {
 		msg := fmt.Sprintf("Hello! %s", time.Now())
 		log.Printf("printing %q", msg)

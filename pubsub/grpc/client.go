@@ -12,34 +12,19 @@ import (
 	"google.golang.org/grpc"
 )
 
-// NewSubscriberFromConnection returns an implementation of
-// pubsub.AtLeastOnceSubscriber from the given grpc connection. This is a
+// NewSubscriber returns an implementation of
+// pubsub.Subscriber from the given grpc connection. This is a
 // convenience in case you want to operate with go channels instead of
 // interacting with the client directly
-func NewSubscriberFromConnection(topic, subscriptionID string, conn *grpc.ClientConn) pubsub.AtLeastOnceSubscriber {
-	return NewSubscriberFromClient(topic, subscriptionID, NewPubSubClient(conn))
+func NewSubscriber(topic, subscriptionID string, conn *grpc.ClientConn) pubsub.Subscriber {
+	return &grpcClientWrapper{topic, subscriptionID, NewPubSubClient(conn)}
 }
 
-// NewSubscriberFromClient returns an implementation of
-// pubsub.AtLeastOnceSubscriber from the given PubSubClient. This is a
-// convenience in case you want to operate with go channels instead of
-// interacting with the client directly
-func NewSubscriberFromClient(topic, subscriptionID string, client PubSubClient) pubsub.AtLeastOnceSubscriber {
-	return &grpcClientWrapper{topic, subscriptionID, client}
-}
-
-// NewPublisherFromConnection returns an implementation of pubsub.Publisher from the
+// NewPublisher returns an implementation of pubsub.Publisher from the
 // given grpc connection. This is a convenience in case you want to operate with go
 // channels instead of interacting with the client directly
-func NewPublisherFromConnection(topic string, conn *grpc.ClientConn) pubsub.Publisher {
-	return NewPublisherFromClient(topic, NewPubSubClient(conn))
-}
-
-// NewPublisherFromClient returns an implementation of pubsub.Publisher from the
-// given PubSubClient. This is a convenience in case you want to operate with go
-// channels instead of interacting with the client directly
-func NewPublisherFromClient(topic string, client PubSubClient) pubsub.Publisher {
-	return &grpcClientWrapper{topic: topic, client: client}
+func NewPublisher(topic string, conn *grpc.ClientConn) pubsub.Publisher {
+	return &grpcClientWrapper{topic: topic, client: NewPubSubClient(conn)}
 }
 
 type grpcClientWrapper struct {
@@ -53,8 +38,8 @@ func (w *grpcClientWrapper) Publish(ctx context.Context, message []byte) error {
 	return err
 }
 
-func (w *grpcClientWrapper) Start(ctx context.Context) (<-chan pubsub.AtLeastOnceMessage, <-chan error) {
-	msgC := make(chan pubsub.AtLeastOnceMessage)
+func (w *grpcClientWrapper) Start(ctx context.Context) (<-chan pubsub.Message, <-chan error) {
+	msgC := make(chan pubsub.Message)
 	errC := make(chan error)
 
 	go func() {

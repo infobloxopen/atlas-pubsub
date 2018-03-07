@@ -13,18 +13,11 @@ type Publisher interface {
 	Publish(context.Context, []byte) error
 }
 
-// AtMostOnceSubscriber defines the interface for a subscriber with at-most-once
-// message delivery semantics
-type AtMostOnceSubscriber interface {
-	// Start creates a channel to the message broker for receiving messages
-	Start(context.Context) (<-chan []byte, <-chan error)
-}
-
-// AtLeastOnceSubscriber defines the interface for a subscriber with at-least-
+// Subscriber defines the interface for a subscriber with at-least-
 // once message delivery semantics
-type AtLeastOnceSubscriber interface {
+type Subscriber interface {
 	// Start creates a channel to the message broker for receiving messages
-	Start(ctx context.Context) (<-chan AtLeastOnceMessage, <-chan error)
+	Start(ctx context.Context) (<-chan Message, <-chan error)
 	// AckMessage will delete the given message from its respective message queue
 	AckMessage(ctx context.Context, messageID string) error
 	// ExtendAckDeadline will postpone resending the given in-flight message for
@@ -32,9 +25,9 @@ type AtLeastOnceSubscriber interface {
 	ExtendAckDeadline(ctx context.Context, messageID string, newDuration time.Duration) error
 }
 
-// AtLeastOnceMessage contains the payload for a message with at-least-once
+// Message contains the payload for a message with at-least-once
 // delivery semantics
-type AtLeastOnceMessage interface {
+type Message interface {
 	// MessageID returns the ID that uniquely identifies this message. You can use
 	// this to Ack or extend the ack deadline from the Subscriber
 	MessageID() string

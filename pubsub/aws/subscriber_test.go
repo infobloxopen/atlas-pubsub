@@ -24,7 +24,7 @@ func TestStart(t *testing.T) {
 		sqsMock.stubbedReceiveMessageMessages = msgs
 	}
 
-	s, serr := newAtLeastOnceSubscriber(&snsMock, &sqsMock, "topic", "subscriptionID")
+	s, serr := newSubscriber(&snsMock, &sqsMock, "topic", "subscriptionID")
 	if serr != nil {
 		t.Errorf("expected no error from newSubscriber, but got: %v", serr)
 		return

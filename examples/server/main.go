@@ -44,8 +44,8 @@ func newAWSPubSubServer(config *aws.Config) (pubsubgrpc.PubSubServer, error) {
 	pubFactory := func(ctx context.Context, topic string) (pubsub.Publisher, error) {
 		return pubsubaws.NewPublisher(config, topic)
 	}
-	subFactory := func(ctx context.Context, topic, subscriptionID string) (pubsub.AtLeastOnceSubscriber, error) {
-		return pubsubaws.NewAtLeastOnceSubscriber(config, topic, subscriptionID)
+	subFactory := func(ctx context.Context, topic, subscriptionID string) (pubsub.Subscriber, error) {
+		return pubsubaws.NewSubscriber(config, topic, subscriptionID)
 	}
 	return pubsubgrpc.NewPubSubServer(pubFactory, subFactory), nil
 }

@@ -11,11 +11,11 @@ import (
 type PublisherFactory func(context.Context, string) (pubsub.Publisher, error)
 
 // SubscriberFactory is a simple function wrapper for creating a
-// pubsub.AtLeastOnceSubscriber instance
-type SubscriberFactory func(context.Context, string, string) (pubsub.AtLeastOnceSubscriber, error)
+// pubsub.Subscriber instance
+type SubscriberFactory func(context.Context, string, string) (pubsub.Subscriber, error)
 
 // NewPubSubServer returns an implementation of PubSubServer by consuming a
-// pubsub.Publisher and pubsub.AtLeastOnceSubscriber implementation
+// pubsub.Publisher and pubsub.OnceSubscriber implementation
 func NewPubSubServer(publisherFactory PublisherFactory, subscriberFactory SubscriberFactory) PubSubServer {
 	return &grpcWrapper{publisherFactory, subscriberFactory}
 }
