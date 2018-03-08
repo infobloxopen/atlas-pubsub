@@ -61,10 +61,10 @@ func (w *grpcClientWrapper) Start(ctx context.Context) (<-chan pubsub.Message, <
 					errC <- err
 				} else {
 					wMsg := grpcClientWrapperMessage{
-						ctx:           ctx,
-						messageID:     msg.GetMessageId(),
-						message:       msg.GetMessage(),
-						clientWrapper: w,
+						ctx:        ctx,
+						messageID:  msg.GetMessageId(),
+						message:    msg.GetMessage(),
+						subscriber: w,
 					}
 					msgC <- &wMsg
 				}
@@ -85,10 +85,10 @@ func (w *grpcClientWrapper) ExtendAckDeadline(ctx context.Context, messageID str
 }
 
 type grpcClientWrapperMessage struct {
-	ctx           context.Context
-	messageID     string
-	message       []byte
-	clientWrapper *grpcClientWrapper
+	ctx        context.Context
+	messageID  string
+	message    []byte
+	subscriber pubsub.Subscriber
 }
 
 func (m *grpcClientWrapperMessage) MessageID() string {
@@ -98,8 +98,8 @@ func (m *grpcClientWrapperMessage) Message() []byte {
 	return m.message
 }
 func (m *grpcClientWrapperMessage) ExtendAckDeadline(newDuration time.Duration) error {
-	return m.clientWrapper.ExtendAckDeadline(m.ctx, m.messageID, newDuration)
+	return m.subscriber.ExtendAckDeadline(m.ctx, m.messageID, newDuration)
 }
 func (m *grpcClientWrapperMessage) Ack() error {
-	return m.clientWrapper.AckMessage(m.ctx, m.messageID)
+	return m.subscriber.AckMessage(m.ctx, m.messageID)
 }

@@ -30,7 +30,7 @@ func mockPublisherFactory(mock *mockPublisher) PublisherFactory {
 	}
 }
 
-func TestPublish(t *testing.T) {
+func TestServerPublish(t *testing.T) {
 	mock := &mockPublisher{}
 	server := NewPubSubServer(mockPublisherFactory(mock), nil, nil)
 	publishRequest := &PublishRequest{
@@ -245,7 +245,7 @@ func TestSubscribe(t *testing.T) {
 	}
 }
 
-func TestAck(t *testing.T) {
+func TestServerAck(t *testing.T) {
 	mock := &mockSubscriber{}
 	server := NewPubSubServer(nil, mockSubscriberFactory(mock), nil)
 	ackRequest := &AckRequest{
