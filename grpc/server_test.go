@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/infobloxopen/atlas-pubsub/pubsub"
+	pubsub "github.com/infobloxopen/atlas-pubsub"
 )
 
 type mockPublisher struct {

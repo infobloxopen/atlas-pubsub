@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"github.com/infobloxopen/atlas-pubsub/pubsub"
+	pubsub "github.com/infobloxopen/atlas-pubsub"
 )
 
 // PublisherFactory is a simple function wrapper for creating a pubsub.Publisher

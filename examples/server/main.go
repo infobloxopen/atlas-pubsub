@@ -12,9 +12,9 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/infobloxopen/atlas-pubsub/pubsub"
-	pubsubaws "github.com/infobloxopen/atlas-pubsub/pubsub/aws"
-	pubsubgrpc "github.com/infobloxopen/atlas-pubsub/pubsub/grpc"
+	pubsub "github.com/infobloxopen/atlas-pubsub"
+	pubsubaws "github.com/infobloxopen/atlas-pubsub/aws"
+	pubsubgrpc "github.com/infobloxopen/atlas-pubsub/grpc"
 	"google.golang.org/grpc"
 )
 
