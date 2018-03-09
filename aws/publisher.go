@@ -3,7 +3,7 @@ package aws
 import (
 	"context"
 
-	"github.com/infobloxopen/atlas-pubsub/pubsub"
+	pubsub "github.com/infobloxopen/atlas-pubsub"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sns/snsiface"

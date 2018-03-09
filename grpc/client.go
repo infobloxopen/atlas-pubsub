@@ -8,7 +8,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/infobloxopen/atlas-pubsub/pubsub"
+	pubsub "github.com/infobloxopen/atlas-pubsub"
 	"google.golang.org/grpc"
 )
 

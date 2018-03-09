@@ -9,7 +9,7 @@ import (
 	"log"
 
 	"github.com/infobloxopen/atlas-pubsub/examples/hello"
-	pubsubgrpc "github.com/infobloxopen/atlas-pubsub/pubsub/grpc"
+	pubsubgrpc "github.com/infobloxopen/atlas-pubsub/grpc"
 	"google.golang.org/grpc"
 )
 

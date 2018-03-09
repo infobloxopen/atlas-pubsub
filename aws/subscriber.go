@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sns/snsiface"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
-	"github.com/infobloxopen/atlas-pubsub/pubsub"
+	pubsub "github.com/infobloxopen/atlas-pubsub"
 )
 
 // NewSubscriber creates an AWS message broker that will subscribe to
