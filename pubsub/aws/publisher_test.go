@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/golang/protobuf/proto"
 )
 
 // TestNewPublisher verifies that aws creates a topic for the given topic name,
@@ -53,11 +55,11 @@ func TestNewPublisher(t *testing.T) {
 }
 
 func TestPublish(t *testing.T) {
-	expectedProto := TestProto{Value: "test value"}
+	expectedMsg, _ := proto.Marshal(&TestProto{Value: "test value"})
 	spy := mockSNS{}
 
 	p := publisher{sns: &spy, topicArn: "foo"}
-	p.Publish(context.Background(), &expectedProto)
+	p.Publish(context.Background(), expectedMsg)
 	spiedInput := spy.spiedPublishInput
 
 	// verify the topic arn is what the publisher is set to
@@ -65,8 +67,8 @@ func TestPublish(t *testing.T) {
 		t.Errorf("AWS topic arn was incorrect, expected: \"%s\", actual: \"%s\"", p.topicArn, *spiedInput.TopicArn)
 	}
 	{ // verify the message looks the way it's supposed to
-		expectedRawMessage, _ := encodeToSNSMessage(&expectedProto)
-		expected := *expectedRawMessage
+		expectedSNSMessage, _ := encodeToSNSMessage(expectedMsg)
+		expected := *expectedSNSMessage
 		actual := *spiedInput.Message
 		if expected != actual {
 			t.Errorf("Base64-encoded message was not in expected format: \nexpected: \"%s\"\nactual:  \"%s\"", expected, actual)
