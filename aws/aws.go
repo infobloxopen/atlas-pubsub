@@ -97,46 +97,6 @@ func ensureTopic(topic string, snsClient snsiface.SNSAPI) (*string, error) {
 	return topicResp.TopicArn, nil
 }
 
-// ensureSubscription takes a topic and subscriptionID and returns the queueURL, creating
-// the topic and queue if necessary.
-//
-// This is broken down into the following discrete tasks:
-// 1. ensure the topic
-// 2. create queue, if necessary
-// 3. ensure queue has proper permissions to the given topic, if necessary
-// 4. subscribe queue to topic, if necessary
-//
-// TODO: consider edge cases where outside tampering of the queue could happen:
-// * what if someone subscribes the same queue to a different SNS topic?
-// * other stuff?
-func ensureSubscription(topic, subscriptionID string, snsClient snsiface.SNSAPI, sqsClient sqsiface.SQSAPI) (*string, error) {
-	queueName, nameErr := buildAWSQueueName(topic, subscriptionID)
-	if nameErr != nil {
-		return nil, nameErr
-	}
-
-	queueURL, queueErr := ensureQueue(queueName, sqsClient)
-	if queueErr != nil {
-		return nil, queueErr
-	}
-
-	topicArn, topicErr := ensureTopic(topic, snsClient)
-	if topicErr != nil {
-		return nil, topicErr
-	}
-
-	policyErr := ensureQueuePolicy(queueURL, topicArn, sqsClient)
-	if policyErr != nil {
-		return nil, policyErr
-	}
-
-	if subErr := ensureQueueSubscription(queueURL, topicArn, snsClient, sqsClient); subErr != nil {
-		return nil, subErr
-	}
-
-	return queueURL, nil
-}
-
 // ensureQueue returns the queueURL for the given queueName, creating the queue
 // if it doesn't exist
 func ensureQueue(queueName *string, sqsClient sqsiface.SQSAPI) (*string, error) {
@@ -193,31 +153,60 @@ func ensureQueuePolicy(queueURL, topicArn *string, sqsClient sqsiface.SQSAPI) er
 }
 
 // ensureQueueSubscription subscribes the given SQS queue to the given SNS topic
-func ensureQueueSubscription(queueURL, topicArn *string, snsClient snsiface.SNSAPI, sqsClient sqsiface.SQSAPI) error {
+func ensureQueueSubscription(queueURL, topicArn *string, snsClient snsiface.SNSAPI, sqsClient sqsiface.SQSAPI) (*string, *string, error) {
 	arnResp, attrErr := sqsClient.GetQueueAttributes(&sqs.GetQueueAttributesInput{
 		QueueUrl:       queueURL,
 		AttributeNames: []*string{aws.String("QueueArn")},
 	})
 	if attrErr != nil {
-		return attrErr
+		return nil, nil, attrErr
 	}
 	queueARN := arnResp.Attributes["QueueArn"]
 
-	_, subErr := snsClient.Subscribe(&sns.SubscribeInput{
+	subResp, subErr := snsClient.Subscribe(&sns.SubscribeInput{
 		Protocol: aws.String("sqs"),
 		TopicArn: topicArn,
 		Endpoint: queueARN,
 	})
 	if subErr != nil {
-		return subErr
+		return nil, nil, subErr
 	}
-	return nil
+	return queueARN, subResp.SubscriptionArn, nil
 }
 
-// encodeToSNSMessage converts the given proto message into a string to be used
+// encodeFilterPolicy converts the given metadata map into input needed for the
+// sqs.Attributes filter policy
+func encodeFilterPolicy(filter map[string]string) (*string, error) {
+	if filter == nil || len(filter) == 0 {
+		return nil, nil
+	}
+
+	// SNS wants the value to be an object or array, so we have to convert the given input
+	arrayified := make(map[string][]string)
+	for k, v := range filter {
+		arrayified[k] = []string{v}
+	}
+	bytes, err := json.Marshal(arrayified)
+	return aws.String(string(bytes)), err
+}
+
+// encodeToSNSMessage converts the given message into a string to be used
 // by SNS
-func encodeToSNSMessage(msg []byte) (*string, error) {
-	return aws.String(base64.StdEncoding.EncodeToString(msg)), nil
+func encodeToSNSMessage(msg []byte) *string {
+	return aws.String(base64.StdEncoding.EncodeToString(msg))
+}
+
+// encodeMessageAttributes converts the given metadata map into input needed for
+// sns.PublishInput.MessageAttributes
+func encodeMessageAttributes(metadata map[string]string) map[string]*sns.MessageAttributeValue {
+	attributes := make(map[string]*sns.MessageAttributeValue)
+	if metadata != nil {
+		for key, value := range metadata {
+			attributes[key] = &sns.MessageAttributeValue{StringValue: aws.String(value), DataType: aws.String("String")}
+		}
+	}
+
+	return attributes
 }
 
 // decodeFromSQSMessage takes the sqs.Message.Body and unmarshals it into a []byte
@@ -231,4 +220,15 @@ func decodeFromSQSMessage(sqsMessage *string) ([]byte, error) {
 	}
 
 	return base64.StdEncoding.DecodeString(v.Payload)
+}
+
+func decodeMessageAttributes(attributes map[string]*sqs.MessageAttributeValue) map[string]string {
+	decoded := map[string]string{}
+	for key, value := range attributes {
+		if *value.DataType == "String" {
+			decoded[key] = *value.StringValue
+		}
+	}
+
+	return decoded
 }

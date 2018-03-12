@@ -15,6 +15,7 @@ import (
 
 var topic = flag.String("topic", hello.DefaultTopicName, "the topic to subscribe to")
 var subscriptionID = flag.String("subID", hello.DefaultSubscriberID, "the subscription ID for the topic")
+var languageFilter = flag.String("lang", "", "if present, will only show messages with metadata tagged for the given language")
 
 func main() {
 	flag.Parse()
@@ -24,7 +25,12 @@ func main() {
 	}
 	s := pubsubgrpc.NewSubscriber(*topic, *subscriptionID, conn)
 
-	c, e := s.Start(context.Background())
+	md := make(map[string]string)
+	if languageFilter != nil && *languageFilter != "" {
+		md["language"] = *languageFilter
+		log.Printf("Only receiving messages written in %q", *languageFilter)
+	}
+	c, e := s.Start(context.Background(), md)
 
 	for {
 		select {

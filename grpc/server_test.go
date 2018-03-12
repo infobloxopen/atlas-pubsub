@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -14,12 +15,14 @@ type mockPublisher struct {
 	spiedConstructorTopicName string
 	stubbedConstructorError   error
 
-	spiedPublishMessage []byte
-	stubbedPublishError error
+	spiedPublishMessage  []byte
+	spiedPublishMetadata map[string]string
+	stubbedPublishError  error
 }
 
-func (p *mockPublisher) Publish(ctx context.Context, message []byte) error {
+func (p *mockPublisher) Publish(ctx context.Context, message []byte, metadata map[string]string) error {
 	p.spiedPublishMessage = message
+	p.spiedPublishMetadata = metadata
 	return p.stubbedPublishError
 }
 
@@ -34,8 +37,9 @@ func TestServerPublish(t *testing.T) {
 	mock := &mockPublisher{}
 	server := NewPubSubServer(mockPublisherFactory(mock), nil, nil)
 	publishRequest := &PublishRequest{
-		Topic:   "testTopic",
-		Message: []byte{1, 2, 3, 4, 5},
+		Topic:    "testTopic",
+		Message:  []byte{1, 2, 3, 4, 5},
+		Metadata: map[string]string{"foo": "bar"},
 	}
 
 	{ // verify an error in constructor propagates through Publish
@@ -60,12 +64,16 @@ func TestServerPublish(t *testing.T) {
 	{ // verify the topic and message are forwarded to the pubsub.Publisher implementation
 		expectedTopic := publishRequest.GetTopic()
 		expectedMessage := publishRequest.GetMessage()
+		expectedMetadata := publishRequest.GetMetadata()
 		server.Publish(context.Background(), publishRequest)
 		if expectedTopic != mock.spiedConstructorTopicName {
 			t.Errorf("expected topic name to be %q, but was %q", expectedTopic, mock.spiedConstructorTopicName)
 		}
 		if !bytes.Equal(expectedMessage, mock.spiedPublishMessage) {
 			t.Errorf("expected message to be %v, but was %v", expectedMessage, mock.spiedPublishMessage)
+		}
+		if !reflect.DeepEqual(expectedMetadata, mock.spiedPublishMetadata) {
+			t.Errorf("expected metadata to be %v, but was %v", expectedMetadata, mock.spiedPublishMetadata)
 		}
 	}
 }
@@ -76,6 +84,7 @@ type mockSubscriber struct {
 	stubbedConstructorError        error
 
 	spiedStartContext          context.Context
+	spiedStartFilter           map[string]string
 	stubbedStartMessageChannel chan pubsub.Message
 	stubbedStartErrorChannel   chan error
 
@@ -83,8 +92,9 @@ type mockSubscriber struct {
 	stubbedAckMessageError  error
 }
 
-func (s *mockSubscriber) Start(ctx context.Context) (<-chan pubsub.Message, <-chan error) {
+func (s *mockSubscriber) Start(ctx context.Context, filter map[string]string) (<-chan pubsub.Message, <-chan error) {
 	s.spiedStartContext = ctx
+	s.spiedStartFilter = filter
 	mc := s.stubbedStartMessageChannel
 	if mc == nil {
 		mc = make(chan pubsub.Message)
@@ -136,10 +146,12 @@ func (ss *mockSubscribeServer) Context() context.Context {
 type mockMessage struct {
 	messageID string
 	message   []byte
+	metadata  map[string]string
 }
 
 func (m mockMessage) MessageID() string                     { return m.messageID }
 func (m mockMessage) Message() []byte                       { return m.message }
+func (m mockMessage) Metadata() map[string]string           { return m.metadata }
 func (m mockMessage) ExtendAckDeadline(time.Duration) error { return nil }
 func (m mockMessage) Ack() error                            { return nil }
 
@@ -148,7 +160,11 @@ func TestSubscribe(t *testing.T) {
 	mock := &mockSubscriber{}
 	mockSubscribe := &mockSubscribeServer{}
 	server := NewPubSubServer(nil, mockSubscriberFactory(mock), func(err error) { errorHandlerError = err })
-	subscribeRequest := &SubscribeRequest{Topic: "testTopic", SubscriptionId: "testSubscriptionID"}
+	subscribeRequest := &SubscribeRequest{
+		Topic:          "testTopic",
+		SubscriptionId: "testSubscriptionID",
+		Filter:         map[string]string{"foo": "bar"},
+	}
 
 	{ // verify an error in constructor propagates through Start
 		expectedErr := errors.New("test subscribe constructor error")
@@ -183,6 +199,13 @@ func TestSubscribe(t *testing.T) {
 			done <- true
 		}()
 		time.Sleep(10 * time.Millisecond)
+		{ // verify filter passed through successfully
+			expectedFilter := subscribeRequest.GetFilter()
+			actualFilter := mock.spiedStartFilter
+			if !reflect.DeepEqual(expectedFilter, actualFilter) {
+				t.Errorf("expected filter to be %v, but was %v", expectedFilter, actualFilter)
+			}
+		}
 		{ // verify a message sent through a channel gets sent through PubSub_SubscribeServer
 			expectedMessageID := "test messageID"
 			expectedMessage := []byte{1, 2, 3, 4}

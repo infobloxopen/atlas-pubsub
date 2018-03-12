@@ -41,13 +41,14 @@ func (s *grpcWrapper) Publish(ctx context.Context, req *PublishRequest) (*Publis
 		return nil, perr
 	}
 
-	if err := p.Publish(ctx, req.GetMessage()); err != nil {
+	if err := p.Publish(ctx, req.GetMessage(), req.GetMetadata()); err != nil {
 		return nil, err
 	}
 	return &PublishResponse{}, nil
 }
 
 func (s *grpcWrapper) Subscribe(req *SubscribeRequest, srv PubSub_SubscribeServer) error {
+	log.Printf("starting subscription for %v", req)
 	subscriber, serr := s.subscriberFactory(context.Background(), req.GetTopic(), req.GetSubscriptionId())
 	if serr != nil {
 		return serr
@@ -55,7 +56,7 @@ func (s *grpcWrapper) Subscribe(req *SubscribeRequest, srv PubSub_SubscribeServe
 
 	ctx, cancel := context.WithCancel(srv.Context())
 	defer cancel()
-	c, e := subscriber.Start(ctx)
+	c, e := subscriber.Start(ctx, req.GetFilter())
 	for {
 		select {
 		case <-srv.Context().Done():
