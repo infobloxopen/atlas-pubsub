@@ -117,86 +117,14 @@ func TestEnsureQueuePolicy(t *testing.T) {
 	}
 }
 
-// func TestEnsureQueueSubscription(t *testing.T) {
-// 	snsSpy := mockSNS{}
-// 	sqsSpy := mockSQS{}
-// 	queueURL := aws.String("queueURL")
-// 	topicArn := aws.String("topicArn")
-// 	{ // verify error is returned when GetQueueAttributes returns error
-// 		expectedErr := errors.New("test error for sqs.GetQueueAttributes")
-// 		sqsSpy.stubbedGetQueueAttributesError = expectedErr
-// 		actualErr := ensureQueueSubscription(queueURL, topicArn, &snsSpy, &sqsSpy)
-// 		if actualErr == nil {
-// 			t.Errorf("expected GetQueueAttributes to return error \"%s\", but didn't", expectedErr.Error())
-// 		} else if actualErr.Error() != expectedErr.Error() {
-// 			t.Errorf("expected GetQueueAttributes to return error \"%s\", but returned \"%s\"", expectedErr.Error(), actualErr.Error())
-// 		}
-// 		sqsSpy.stubbedGetQueueAttributesError = nil
-// 	}
-// 	expectedEndpoint := aws.String("expectedQueueArn")
-// 	sqsSpy.stubbedGetQueueAttributesOutput = &sqs.GetQueueAttributesOutput{
-// 		Attributes: map[string]*string{"QueueArn": expectedEndpoint},
-// 	}
-// 	{ // verify error is returned when sns.Subscribe returns error
-// 		expectedErr := errors.New("test error for sns.Subscribe")
-// 		snsSpy.stubbedSubscribeError = expectedErr
-// 		actualErr := ensureQueueSubscription(queueURL, topicArn, &snsSpy, &sqsSpy)
-// 		if actualErr == nil {
-// 			t.Errorf("expected Subscribe to return error \"%s\", but didn't", expectedErr.Error())
-// 		} else if actualErr.Error() != expectedErr.Error() {
-// 			t.Errorf("expected Subscribe to return error \"%s\", but returned \"%s\"", expectedErr.Error(), actualErr.Error())
-// 		}
-// 		snsSpy.stubbedSubscribeError = nil
-// 	}
-// 	{ // verify sns.Subscribe subscribes the given topicArn to the queueArn returned from sqs.GetQueueAttributes
-// 		ensureQueueSubscription(queueURL, topicArn, &snsSpy, &sqsSpy)
-// 		actualEndpoint := snsSpy.spiedSubscribeInput.Endpoint
-// 		if actualEndpoint != expectedEndpoint {
-// 			t.Errorf("expected Subscribe to have endpoint \"%s\", but was \"%s\"", *expectedEndpoint, *actualEndpoint)
-// 		}
-// 		actualTopicArn := snsSpy.spiedSubscribeInput.TopicArn
-// 		if actualTopicArn != topicArn {
-// 			t.Errorf("expected Subscribe topicArn to be \"%s\", but was \"%s\"", *topicArn, *actualTopicArn)
-// 		}
-// 	}
-// 	happyPathErr := ensureQueueSubscription(queueURL, topicArn, &snsSpy, &sqsSpy)
-// 	if happyPathErr != nil {
-// 		t.Errorf("expected happy path to not return error, but returned \"%s\"", happyPathErr.Error())
-// 	}
-// }
-
-// func TestEnsureFilterPolicy(t *testing.T) {
-// 	sqsSpy := mockSQS{}
-// 	queueURL := aws.String("queueURL")
-// 	filter := map[string]string{"foo": "bar"}
-// 	ensureFilterPolicy(queueURL, filter, &sqsSpy)
-// 	if sqsSpy.spiedSetQueueAttributesInput == nil {
-// 		t.Error("expected SetQueueAttributes to be called, but wasn't")
-// 	} else {
-// 		actualQueueURL := sqsSpy.spiedSetQueueAttributesInput.QueueUrl
-// 		if queueURL != actualQueueURL {
-// 			t.Errorf("expected SetQueueAttributes to be called on queueURL %q, but was %q", queueURL, actualQueueURL)
-// 		}
-//
-// 		actualFilter := *sqsSpy.spiedSetQueueAttributesInput.Attributes["FilterPolicy"]
-// 		expectedFilter, _ := encodeFilterPolicy(filter)
-//
-// 		if expectedFilter != actualFilter {
-// 			t.Errorf("expected filter to be %q, but was %q", expectedFilter, actualFilter)
-// 		}
-// 	}
-// }
-
 func TestEncodeFilterPolicy(t *testing.T) {
-	{
-		expected := fmt.Sprintf("{%q:[%q]}", "foo", "bar")
-		actual, err := encodeFilterPolicy(map[string]string{"foo": "bar"})
-		if err != nil {
-			t.Errorf("wasn't expecting error:\n%v", err)
-		}
-		if expected != *actual {
-			t.Errorf("expected: %q\nactual:%q", expected, actual)
-		}
+	expected := fmt.Sprintf("{%q:[%q]}", "foo", "bar")
+	actual, err := encodeFilterPolicy(map[string]string{"foo": "bar"})
+	if err != nil {
+		t.Errorf("wasn't expecting error:\n%v", err)
+	}
+	if expected != *actual {
+		t.Errorf("expected: %q\nactual:%q", expected, actual)
 	}
 }
 

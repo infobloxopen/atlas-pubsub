@@ -113,37 +113,29 @@ func (m *awsMessage) Ack() error {
 // * what if someone subscribes the same queue to a different SNS topic?
 // * other stuff?
 func (s *awsSubscriber) ensureSubscription(topic, subscriptionID string) error {
-	queueName, nameErr := buildAWSQueueName(topic, subscriptionID)
-	if nameErr != nil {
-		return nameErr
+	queueName, err := buildAWSQueueName(topic, subscriptionID)
+	if err != nil {
+		return err
 	}
-	{ // create the queue if needed
-		queueURL, err := ensureQueue(queueName, s.sqs)
-		if err != nil {
-			return err
-		}
-		s.queueURL = queueURL
+	// create the queue if needed
+	s.queueURL, err = ensureQueue(queueName, s.sqs)
+	if err != nil {
+		return err
 	}
-	{ // create the topic if needed
-		topicArn, err := ensureTopic(topic, s.sns)
-		if err != nil {
-			return err
-		}
-		s.topicArn = topicArn
+	// create the topic if needed
+	s.topicArn, err = ensureTopic(topic, s.sns)
+	if err != nil {
+		return err
 	}
-	{ // set the queue policy to allow SNS
-		err := ensureQueuePolicy(s.queueURL, s.topicArn, s.sqs)
-		if err != nil {
-			return err
-		}
+	// set the queue policy to allow SNS
+	err = ensureQueuePolicy(s.queueURL, s.topicArn, s.sqs)
+	if err != nil {
+		return err
 	}
-	{ // subscribe the queue to the topic
-		queueArn, subscriptionArn, err := ensureQueueSubscription(s.queueURL, s.topicArn, s.sns, s.sqs)
-		if err != nil {
-			return err
-		}
-		s.queueArn = queueArn
-		s.subscriptionArn = subscriptionArn
+	// subscribe the queue to the topic
+	s.queueArn, s.subscriptionArn, err = ensureQueueSubscription(s.queueURL, s.topicArn, s.sns, s.sqs)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -176,21 +168,21 @@ func (s *awsSubscriber) pull(ctx context.Context, channel chan pubsub.Message, e
 	})
 	if err != nil {
 		errChannel <- err
-	} else {
-		for _, msg := range resp.Messages {
-			message, err := decodeFromSQSMessage(msg.Body)
-			metadata := decodeMessageAttributes(msg.MessageAttributes)
-			if err != nil {
-				errChannel <- err
-			} else {
-				channel <- &awsMessage{
-					ctx:        ctx,
-					subscriber: s,
-					messageID:  *msg.ReceiptHandle,
-					message:    message,
-					metadata:   metadata,
-				}
-			}
+		return
+	}
+	for _, msg := range resp.Messages {
+		message, err := decodeFromSQSMessage(msg.Body)
+		metadata := decodeMessageAttributes(msg.MessageAttributes)
+		if err != nil {
+			errChannel <- err
+			continue
+		}
+		channel <- &awsMessage{
+			ctx:        ctx,
+			subscriber: s,
+			messageID:  *msg.ReceiptHandle,
+			message:    message,
+			metadata:   metadata,
 		}
 	}
 }
