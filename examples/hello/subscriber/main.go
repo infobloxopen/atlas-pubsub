@@ -18,7 +18,8 @@ var subscriptionID = flag.String("subID", hello.DefaultSubscriberID, "the subscr
 
 func main() {
 	flag.Parse()
-	conn, err := grpc.Dial(":8080", grpc.WithInsecure())
+	conn, err := grpc.Dial("pubsub.atlas.svc.cluster.local:8081", grpc.WithInsecure())
+
 	if err != nil {
 		log.Fatalf("failed to dial to grpc server: %v", err)
 	}

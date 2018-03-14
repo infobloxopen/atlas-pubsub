@@ -19,7 +19,7 @@ var topic = flag.String("topic", hello.DefaultTopicName, "the topic to publish t
 
 func main() {
 	flag.Parse()
-	conn, err := grpc.Dial(":8080", grpc.WithInsecure())
+	conn, err := grpc.Dial("pubsub.atlas.svc.cluster.local:8081", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("failed to dial to grpc server: %v", err)
 	}
@@ -27,7 +27,11 @@ func main() {
 	for {
 		msg := fmt.Sprintf("Hello! %s", time.Now())
 		log.Printf("printing %q", msg)
-		p.Publish(context.Background(), []byte(msg))
+		err := p.Publish(context.Background(), []byte(msg))
+		if err != nil {
+			log.Printf("Failed to send a message")
+			log.Println(err.Error())
+		}
 		time.Sleep(time.Second)
 	}
 }

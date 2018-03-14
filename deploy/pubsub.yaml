@@ -1,0 +1,48 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: pubsub
+  namespace: atlas 
+spec: 
+  replicas: 1 
+  template: 
+    metadata:
+      labels:
+        app: pubsub
+    spec: 
+      imagePullSecrets: 
+      - name: infobloxctokey # maybe no longer necessary
+      containers:
+      - name: pubsub-server
+        image: infobloxcto/atlas.pubsub:c625301-dirty  
+        imagePullPolicy: Always
+        env:
+        - name: AWS_ACCESS_KEY_ID #need to pass this as a env variable 
+          value: $AWS_ACCESS_KEY_ID
+        - name: AWS_SECRET_ACCESS_KEY
+          value: $AWS_SECRET_ACCESS_KEY
+        - name: AWS_REGION
+          value: us-east-1
+        ports:
+          - name: grpc
+            containerPort: 8081
+            protocol: TCP
+        args: [
+            # "-log",
+            "debug"
+         ]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pubsub
+  namespace: atlas
+spec:
+  ports:
+    - name: grpc
+      port: 8081 
+      targetPort: 8081 
+      # nodePort: 30055 # from outside you can create a tunnel and access whatever is on puhsub api 
+  selector:
+    app: pubsub # needs to match the top
+  # type: NodePort

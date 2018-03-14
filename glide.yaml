@@ -1,0 +1,21 @@
+package: github.com/infobloxopen/atlas-pubsub
+import:
+- package: github.com/aws/aws-sdk-go
+  subpackages:
+  - aws
+  - aws/awserr
+  - aws/credentials
+  - aws/session
+  - service/sns
+  - service/sns/snsiface
+  - service/sqs
+  - service/sqs/sqsiface
+- package: github.com/golang/protobuf
+  subpackages:
+  - proto
+- package: golang.org/x/net
+  subpackages:
+  - context
+- package: google.golang.org/grpc
+testImport:
+- package: github.com/google/uuid
