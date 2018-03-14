@@ -19,10 +19,11 @@ var topic = flag.String("topic", hello.DefaultTopicName, "the topic to publish t
 
 func main() {
 	flag.Parse()
-	conn, err := grpc.Dial(":8080", grpc.WithInsecure())
+	conn, err := grpc.Dial("pubsub.atlas.svc.cluster.local:8081", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("failed to dial to grpc server: %v", err)
 	}
+<<<<<<< HEAD
 	for i := 0; ; i++ {
 		p := pubsubgrpc.NewPublisher(*topic, conn)
 		g := hello.Greetings[i%len(hello.Greetings)]
@@ -31,6 +32,17 @@ func main() {
 		md := map[string]string{"language": g.Language}
 		log.Printf("printing %q %v", msg, md)
 		p.Publish(context.Background(), []byte(msg), md)
+=======
+	p := pubsubgrpc.NewPublisher(*topic, conn)
+	for {
+		msg := fmt.Sprintf("Hello! %s", time.Now())
+		log.Printf("printing %q", msg)
+		err := p.Publish(context.Background(), []byte(msg))
+		if err != nil {
+			log.Printf("Failed to send a message")
+			log.Println(err.Error())
+		}
+>>>>>>> Create a Makefile, dockerfiles for the server and the example publisher and subscriber. Created 3 kubernetes yaml files for deployment
 		time.Sleep(time.Second)
 	}
 }

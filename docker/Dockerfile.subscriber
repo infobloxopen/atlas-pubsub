@@ -1,0 +1,8 @@
+FROM alpine:3.5
+
+COPY bin/pubsub-sub /usr/local/bin/pubsub-sub
+
+# Allows to verify certificates
+RUN apk update --no-cache && apk add --no-cache ca-certificates
+
+ENTRYPOINT ["/usr/local/bin/pubsub-sub"]
