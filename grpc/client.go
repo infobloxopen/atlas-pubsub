@@ -33,19 +33,23 @@ type grpcClientWrapper struct {
 	client         PubSubClient
 }
 
-func (w *grpcClientWrapper) Publish(ctx context.Context, message []byte) error {
-	_, err := w.client.Publish(ctx, &PublishRequest{Topic: w.topic, Message: message})
+func (w *grpcClientWrapper) Publish(ctx context.Context, message []byte, metadata map[string]string) error {
+	_, err := w.client.Publish(ctx, &PublishRequest{Topic: w.topic, Message: message, Metadata: metadata})
 	return err
 }
 
-func (w *grpcClientWrapper) Start(ctx context.Context) (<-chan pubsub.Message, <-chan error) {
+func (w *grpcClientWrapper) Start(ctx context.Context, filter map[string]string) (<-chan pubsub.Message, <-chan error) {
 	msgC := make(chan pubsub.Message)
 	errC := make(chan error)
 
 	go func() {
 		defer close(msgC)
 
-		stream, err := w.client.Subscribe(ctx, &SubscribeRequest{Topic: w.topic, SubscriptionId: w.subscriptionID})
+		stream, err := w.client.Subscribe(ctx, &SubscribeRequest{
+			Topic:          w.topic,
+			SubscriptionId: w.subscriptionID,
+			Filter:         filter,
+		})
 		if err != nil {
 			errC <- err
 			return
@@ -64,6 +68,7 @@ func (w *grpcClientWrapper) Start(ctx context.Context) (<-chan pubsub.Message, <
 						ctx:        ctx,
 						messageID:  msg.GetMessageId(),
 						message:    msg.GetMessage(),
+						metadata:   msg.GetMetadata(),
 						subscriber: w,
 					}
 					msgC <- &wMsg
@@ -88,6 +93,7 @@ type grpcClientWrapperMessage struct {
 	ctx        context.Context
 	messageID  string
 	message    []byte
+	metadata   map[string]string
 	subscriber pubsub.Subscriber
 }
 
@@ -96,6 +102,9 @@ func (m *grpcClientWrapperMessage) MessageID() string {
 }
 func (m *grpcClientWrapperMessage) Message() []byte {
 	return m.message
+}
+func (m *grpcClientWrapperMessage) Metadata() map[string]string {
+	return m.metadata
 }
 func (m *grpcClientWrapperMessage) ExtendAckDeadline(newDuration time.Duration) error {
 	return m.subscriber.ExtendAckDeadline(m.ctx, m.messageID, newDuration)

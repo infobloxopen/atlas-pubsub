@@ -3,10 +3,9 @@ package aws
 import (
 	"context"
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/golang/protobuf/proto"
 )
 
 // TestNewPublisher verifies that aws creates a topic for the given topic name,
@@ -55,23 +54,40 @@ func TestNewPublisher(t *testing.T) {
 }
 
 func TestPublish(t *testing.T) {
-	expectedMsg, _ := proto.Marshal(&TestProto{Value: "test value"})
-	spy := mockSNS{}
+	msg := []byte{1, 2, 3, 4}
+	metadata := map[string]string{"foo": "bar"}
+	spy := mockSNS{stubbedPublishError: errors.New("test publish error")}
 
 	p := publisher{sns: &spy, topicArn: "foo"}
-	p.Publish(context.Background(), expectedMsg)
+	p.Publish(context.Background(), msg, metadata)
 	spiedInput := spy.spiedPublishInput
 
-	// verify the topic arn is what the publisher is set to
-	if *spiedInput.TopicArn != p.topicArn {
-		t.Errorf("AWS topic arn was incorrect, expected: \"%s\", actual: \"%s\"", p.topicArn, *spiedInput.TopicArn)
+	{ // verify the topic arn is what the publisher is set to
+		expected := p.topicArn
+		actual := *spiedInput.TopicArn
+		if expected != actual {
+			t.Errorf("AWS topic arn was incorrect, expected: \"%s\", actual: \"%s\"", expected, actual)
+		}
 	}
 	{ // verify the message looks the way it's supposed to
-		expectedSNSMessage, _ := encodeToSNSMessage(expectedMsg)
-		expected := *expectedSNSMessage
+		expected := *encodeToSNSMessage(msg)
 		actual := *spiedInput.Message
 		if expected != actual {
 			t.Errorf("Base64-encoded message was not in expected format: \nexpected: \"%s\"\nactual:  \"%s\"", expected, actual)
+		}
+	}
+	{ // verify the metadata looks the way it's supposed to
+		expected := encodeMessageAttributes(metadata)
+		actual := spiedInput.MessageAttributes
+		if !reflect.DeepEqual(expected, actual) {
+			t.Errorf("expected messageAttributes to be %v, but was %v", expected, actual)
+		}
+	}
+	{ // verify publish errors are forwarded
+		actual := p.Publish(context.Background(), msg, nil)
+		expected := spy.stubbedPublishError
+		if expected != actual {
+			t.Errorf("expected publish error %v, but got %v", expected, actual)
 		}
 	}
 }

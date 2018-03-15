@@ -23,11 +23,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to dial to grpc server: %v", err)
 	}
-	p := pubsubgrpc.NewPublisher(*topic, conn)
-	for {
-		msg := fmt.Sprintf("Hello! %s", time.Now())
-		log.Printf("printing %q", msg)
-		p.Publish(context.Background(), []byte(msg))
+	for i := 0; ; i++ {
+		p := pubsubgrpc.NewPublisher(*topic, conn)
+		g := hello.Greetings[i%len(hello.Greetings)]
+
+		msg := fmt.Sprintf("%s %s", g.Message, time.Now())
+		md := map[string]string{"language": g.Language}
+		log.Printf("printing %q %v", msg, md)
+		p.Publish(context.Background(), []byte(msg), md)
 		time.Sleep(time.Second)
 	}
 }

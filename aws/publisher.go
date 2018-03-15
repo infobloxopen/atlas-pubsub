@@ -3,10 +3,10 @@ package aws
 import (
 	"context"
 
-	pubsub "github.com/infobloxopen/atlas-pubsub"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sns/snsiface"
+	pubsub "github.com/infobloxopen/atlas-pubsub"
 )
 
 // NewPublisher creates a new AWS message broker that will publish
@@ -43,15 +43,14 @@ type publisher struct {
 	topicArn string
 }
 
-func (p publisher) Publish(ctx context.Context, msg []byte) error {
-	message, err := encodeToSNSMessage(msg)
-	if err != nil {
-		return err
-	}
+func (p publisher) Publish(ctx context.Context, msg []byte, metadata map[string]string) error {
+	message := encodeToSNSMessage(msg)
+	messageAttributes := encodeMessageAttributes(metadata)
 
 	_, publishErr := p.sns.PublishWithContext(ctx, &sns.PublishInput{
-		TopicArn: aws.String(p.topicArn),
-		Message:  message,
+		TopicArn:          aws.String(p.topicArn),
+		Message:           message,
+		MessageAttributes: messageAttributes,
 	})
 
 	return publishErr

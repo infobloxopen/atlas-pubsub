@@ -1,14 +1,17 @@
 package aws
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sqs"
-	"github.com/golang/protobuf/proto"
 )
 
 func TestTopicAndQueueNamingMaxLengths(t *testing.T) {
@@ -114,77 +117,66 @@ func TestEnsureQueuePolicy(t *testing.T) {
 	}
 }
 
-func TestEnsureQueueSubscription(t *testing.T) {
-	snsSpy := mockSNS{}
-	sqsSpy := mockSQS{}
-	queueURL := aws.String("queueURL")
-	topicArn := aws.String("topicArn")
-	{ // verify error is returned when GetQueueAttributes returns error
-		expectedErr := errors.New("test error for sqs.GetQueueAttributes")
-		sqsSpy.stubbedGetQueueAttributesError = expectedErr
-		actualErr := ensureQueueSubscription(queueURL, topicArn, &snsSpy, &sqsSpy)
-		if actualErr == nil {
-			t.Errorf("expected GetQueueAttributes to return error \"%s\", but didn't", expectedErr.Error())
-		} else if actualErr.Error() != expectedErr.Error() {
-			t.Errorf("expected GetQueueAttributes to return error \"%s\", but returned \"%s\"", expectedErr.Error(), actualErr.Error())
-		}
-		sqsSpy.stubbedGetQueueAttributesError = nil
+func TestEncodeFilterPolicy(t *testing.T) {
+	expected := fmt.Sprintf("{%q:[%q]}", "foo", "bar")
+	actual, err := encodeFilterPolicy(map[string]string{"foo": "bar"})
+	if err != nil {
+		t.Errorf("wasn't expecting error:\n%v", err)
 	}
-	expectedEndpoint := aws.String("expectedQueueArn")
-	sqsSpy.stubbedGetQueueAttributesOutput = &sqs.GetQueueAttributesOutput{
-		Attributes: map[string]*string{"QueueArn": expectedEndpoint},
-	}
-	{ // verify error is returned when sns.Subscribe returns error
-		expectedErr := errors.New("test error for sns.Subscribe")
-		snsSpy.stubbedSubscribeError = expectedErr
-		actualErr := ensureQueueSubscription(queueURL, topicArn, &snsSpy, &sqsSpy)
-		if actualErr == nil {
-			t.Errorf("expected Subscribe to return error \"%s\", but didn't", expectedErr.Error())
-		} else if actualErr.Error() != expectedErr.Error() {
-			t.Errorf("expected Subscribe to return error \"%s\", but returned \"%s\"", expectedErr.Error(), actualErr.Error())
-		}
-		snsSpy.stubbedSubscribeError = nil
-	}
-	{ // verify sns.Subscribe subscribes the given topicArn to the queueArn returned from sqs.GetQueueAttributes
-		ensureQueueSubscription(queueURL, topicArn, &snsSpy, &sqsSpy)
-		actualEndpoint := snsSpy.spiedSubscribeInput.Endpoint
-		if actualEndpoint != expectedEndpoint {
-			t.Errorf("expected Subscribe to have endpoint \"%s\", but was \"%s\"", *expectedEndpoint, *actualEndpoint)
-		}
-		actualTopicArn := snsSpy.spiedSubscribeInput.TopicArn
-		if actualTopicArn != topicArn {
-			t.Errorf("expected Subscribe topicArn to be \"%s\", but was \"%s\"", *topicArn, *actualTopicArn)
-		}
-	}
-	happyPathErr := ensureQueueSubscription(queueURL, topicArn, &snsSpy, &sqsSpy)
-	if happyPathErr != nil {
-		t.Errorf("expected happy path to not return error, but returned \"%s\"", happyPathErr.Error())
+	if expected != *actual {
+		t.Errorf("expected: %q\nactual:%q", expected, actual)
 	}
 }
 
 func TestDecodeFromSQSMessage(t *testing.T) {
-	expectedValue := "foo"
+	expectedValue := []byte("foo")
 
-	sqsMsg, werr := wrapIntoSQSMessage(&TestProto{Value: expectedValue}, nil)
+	sqsMsg, werr := wrapIntoSQSMessage(expectedValue, nil, nil)
 	if werr != nil {
 		t.Errorf("did not expect wrapIntoSQSMessage to return err, but returned: %v", werr)
 	}
 
-	var actualValue string
 	{
-		decoded, derr := decodeFromSQSMessage(sqsMsg.Body)
+		actualValue, derr := decodeFromSQSMessage(sqsMsg.Body)
 		if derr != nil {
 			t.Errorf("did not expect decodeFromSQSMessage to return err, but returned: %v", derr)
 		}
-		decodedProto := TestProto{}
-		unmerr := proto.Unmarshal(decoded, &decodedProto)
-		if unmerr != nil {
-			t.Errorf("did not expect proto.Unmarshal to return err, but returned: %v", unmerr)
+		if !bytes.Equal(expectedValue, actualValue) {
+			t.Errorf("expected value to be \"%s\", but was \"%s\"", expectedValue, actualValue)
 		}
-		actualValue = decodedProto.Value
 	}
+}
 
-	if expectedValue != actualValue {
-		t.Errorf("expected value to be \"%s\", but was \"%s\"", expectedValue, actualValue)
+func TestEncodeMessageAttributes(t *testing.T) {
+	cases := []struct {
+		input    map[string]string
+		expected map[string]*sns.MessageAttributeValue
+	}{
+		{
+			map[string]string{"foo": "bar"},
+			map[string]*sns.MessageAttributeValue{"foo": &sns.MessageAttributeValue{StringValue: aws.String("bar"), DataType: aws.String("String")}},
+		},
+		{
+			nil,
+			make(map[string]*sns.MessageAttributeValue),
+		},
+	}
+	for _, c := range cases {
+		actual := encodeMessageAttributes(c.input)
+		if !reflect.DeepEqual(c.expected, actual) {
+			t.Errorf("expected messageAttributes to be %v, but was %v", c.expected, actual)
+		}
+	}
+}
+
+func TestDecodeMessageAttributes(t *testing.T) {
+	input := map[string]*sqs.MessageAttributeValue{
+		"foo": &sqs.MessageAttributeValue{DataType: aws.String("String"), StringValue: aws.String("bar")},
+		"baz": &sqs.MessageAttributeValue{DataType: aws.String("NotString"), StringValue: aws.String("qux")},
+	}
+	expected := map[string]string{"foo": "bar"}
+	actual := decodeMessageAttributes(input)
+	if !reflect.DeepEqual(expected, actual) {
+		t.Errorf("expected decoded metadata to be %v, but was %v", expected, actual)
 	}
 }

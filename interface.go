@@ -10,14 +10,14 @@ import (
 type Publisher interface {
 	// Publishes the given message to the message broker. The topic should be
 	// known to the publisher prior to making this call
-	Publish(context.Context, []byte) error
+	Publish(context.Context, []byte, map[string]string) error
 }
 
 // Subscriber defines the interface for a subscriber with at-least-
 // once message delivery semantics
 type Subscriber interface {
 	// Start creates a channel to the message broker for receiving messages
-	Start(ctx context.Context) (<-chan Message, <-chan error)
+	Start(ctx context.Context, filter map[string]string) (<-chan Message, <-chan error)
 	// AckMessage will delete the given message from its respective message queue
 	AckMessage(ctx context.Context, messageID string) error
 	// ExtendAckDeadline will postpone resending the given in-flight message for
@@ -33,6 +33,8 @@ type Message interface {
 	MessageID() string
 	// Message returns the payload from the message
 	Message() []byte
+	// Metadata returns the metadata associated with this message
+	Metadata() map[string]string
 	// ExtendAckDeadline extends the duration that a message can remain in-flight
 	// before it will get added back to the message queue for redelivery. Call
 	// this if processing the message will take longer than the existing time window.

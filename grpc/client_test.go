@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -71,10 +72,11 @@ func TestClientPublish(t *testing.T) {
 		client: &mc,
 	}
 	expectedMessage := []byte{1, 2, 3, 4}
+	expectedMetadata := map[string]string{"foo": "bar"}
 	{ // verify publish error is forwarded
 		expectedErr := errors.New("test publish error")
 		mc.stubbedPublishError = expectedErr
-		actualErr := cw.Publish(context.Background(), expectedMessage)
+		actualErr := cw.Publish(context.Background(), expectedMessage, expectedMetadata)
 		if expectedErr != actualErr {
 			t.Errorf("publish error was incorrect:\nexpected: %v\nactual: %v", expectedErr, actualErr)
 		}
@@ -93,11 +95,21 @@ func TestClientPublish(t *testing.T) {
 			t.Errorf("expected message to be %v, but was %v", expectedMessage, actualMessage)
 		}
 	}
+	{ // verify metadata was passed correctly
+		actualMetadata := mc.spiedPublishRequest.GetMetadata()
+		if !reflect.DeepEqual(expectedMetadata, actualMetadata) {
+			t.Errorf("expected metadata to be %v, but was %v", expectedMetadata, actualMetadata)
+		}
+	}
 }
 
 func TestClientStart(t *testing.T) {
 	expectedErr := errors.New("test Recv error")
-	expectedSubscribeResponse := &SubscribeResponse{MessageId: "test messageID", Message: []byte{1, 2, 3, 4}}
+	expectedSubscribeResponse := &SubscribeResponse{
+		MessageId: "test messageID",
+		Message:   []byte{1, 2, 3, 4},
+		Metadata:  map[string]string{"foo": "bar"},
+	}
 
 	testCtx, cancelTestCtx := context.WithCancel(context.Background())
 	msc := &mockPubSubSubscribeClient{
@@ -114,7 +126,7 @@ func TestClientStart(t *testing.T) {
 		client:         &mc,
 	}
 
-	c, e := cw.Start(testCtx)
+	c, e := cw.Start(testCtx, nil)
 	// TODO: figure out why this thing needs to sleep
 	time.Sleep(time.Millisecond)
 	{ // verify an error response is sent through the error channel
@@ -132,12 +144,16 @@ func TestClientStart(t *testing.T) {
 	{ // verify the success response from PubSub_SubscribeClient.Recv is sent through the message channel
 		expectedMessageID := expectedSubscribeResponse.GetMessageId()
 		expectedMessage := expectedSubscribeResponse.GetMessage()
+		expectedMetadata := expectedSubscribeResponse.GetMetadata()
 		msg := <-c
 		if expectedMessageID != msg.MessageID() {
 			t.Errorf("expected messageID to be %q, but was %q", "test messageID", msg.MessageID())
 		}
 		if !bytes.Equal(expectedMessage, msg.Message()) {
 			t.Errorf("expected message to be %v, but was %v", expectedMessage, msg.Message())
+		}
+		if !reflect.DeepEqual(expectedMetadata, msg.Metadata()) {
+			t.Errorf("expected metadata to be %v, but was %v", expectedMetadata, msg.Metadata())
 		}
 	}
 	{ // verify cancelling the context closes the message channel

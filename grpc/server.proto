@@ -5,6 +5,7 @@ package grpc;
 message PublishRequest {
   string topic = 1;
   bytes message = 2;
+  map<string, string> metadata = 3;
 }
 
 message PublishResponse {}
@@ -12,11 +13,13 @@ message PublishResponse {}
 message SubscribeRequest {
   string topic = 1;
   string subscription_id = 2;
+  map<string, string> filter = 3;
 }
 
 message SubscribeResponse {
   string message_id = 1;
   bytes message = 2;
+  map<string, string> metadata = 3;
 }
 
 message AckRequest {
