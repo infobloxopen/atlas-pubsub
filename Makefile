@@ -41,6 +41,10 @@ fmt:
 	@echo "Running 'go fmt ...'"
 	@go fmt -x "$(REPO)/..."
 
+deps:
+	@echo "Getting dependencies..."
+	@dep ensure
+
 bin:
 	mkdir -p "$(BINDIR)"
 
