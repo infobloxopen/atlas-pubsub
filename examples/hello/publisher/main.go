@@ -15,11 +15,12 @@ import (
 	"google.golang.org/grpc"
 )
 
+var url = flag.String("url", ":8080", "the grpc url to the pubsub server")
 var topic = flag.String("topic", hello.DefaultTopicName, "the topic to publish to")
 
 func main() {
 	flag.Parse()
-	conn, err := grpc.Dial(":8080", grpc.WithInsecure())
+	conn, err := grpc.Dial(*url, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("failed to dial to grpc server: %v", err)
 	}
@@ -29,7 +30,7 @@ func main() {
 
 		msg := fmt.Sprintf("%s %s", g.Message, time.Now())
 		md := map[string]string{"language": g.Language}
-		log.Printf("printing %q %v", msg, md)
+		log.Printf("publishing %q %v", msg, md)
 		p.Publish(context.Background(), []byte(msg), md)
 		time.Sleep(time.Second)
 	}

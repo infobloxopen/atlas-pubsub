@@ -13,13 +13,14 @@ import (
 	"google.golang.org/grpc"
 )
 
+var url = flag.String("url", ":8080", "the grpc url to the pubsub server")
 var topic = flag.String("topic", hello.DefaultTopicName, "the topic to subscribe to")
 var subscriptionID = flag.String("subID", hello.DefaultSubscriberID, "the subscription ID for the topic")
 var languageFilter = flag.String("lang", "", "if present, will only show messages with metadata tagged for the given language")
 
 func main() {
 	flag.Parse()
-	conn, err := grpc.Dial(":8080", grpc.WithInsecure())
+	conn, err := grpc.Dial(*url, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("failed to dial to grpc server: %v", err)
 	}
@@ -36,7 +37,7 @@ func main() {
 		select {
 		case msg, isOpen := <-c:
 			if !isOpen {
-				log.Fatalln("subscription channel closed")
+				log.Println("subscription channel closed")
 				return
 			}
 			greeting := string(msg.Message())
@@ -45,7 +46,7 @@ func main() {
 				log.Fatalf("failed to ack messageID %q: %v", msg.MessageID(), err)
 			}
 		case err := <-e:
-			log.Fatalf("encountered error reading subscription: %v", err)
+			log.Printf("encountered error reading subscription: %v", err)
 		}
 	}
 }

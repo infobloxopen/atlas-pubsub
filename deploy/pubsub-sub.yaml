@@ -1,0 +1,24 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: pubsub-sub
+  namespace: atlas
+spec:
+  replicas: 1 
+  template: 
+    metadata:
+      labels:
+        app: pubsub-sub
+    spec: 
+      containers:
+      - name: pubsub-sub
+        image: infobloxcto/atlas.pubsub-sub:c18518c-dirty
+        imagePullPolicy: Always
+        env:
+        ports:
+          - name: grpc
+            containerPort: 80
+        args: [
+            "-url=pubsub.atlas.svc:80",
+            "debug"
+         ]
