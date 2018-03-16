@@ -43,7 +43,10 @@ func main() {
 			log.Printf("Failed to send a message")
 			log.Println(err.Error())
 		}
+<<<<<<< HEAD
 >>>>>>> Create a Makefile, dockerfiles for the server and the example publisher and subscriber. Created 3 kubernetes yaml files for deployment
+=======
+>>>>>>> 8e70c05260787b3699751f50ffe3d01757a6acc1
 		time.Sleep(time.Second)
 	}
 }

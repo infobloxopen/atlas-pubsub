@@ -28,6 +28,7 @@ func main() {
 	// s := pubsubgrpc.NewSubscriber(*topic, *subscriptionID, conn)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	md := make(map[string]string)
 	if languageFilter != nil && *languageFilter != "" {
 		md["language"] = *languageFilter
@@ -37,6 +38,9 @@ func main() {
 =======
 	s := pubsubgrpc.NewSubscriber(*topic, "testroman", conn)
 >>>>>>> Changed kubernetes yaml files to work with correct url and update glide to dep.
+=======
+	s := pubsubgrpc.NewSubscriber(*topic, "testroman", conn)
+>>>>>>> 8e70c05260787b3699751f50ffe3d01757a6acc1
 
 	c, e := s.Start(context.Background())
 	for {
