@@ -1,4 +1,10 @@
-# Pub/Sub implementations
+# atlas-pubsub
+
+[![Build Status](https://img.shields.io/travis/infobloxopen/atlas-pubsub/master.svg?label=build)](https://travis-ci.org/infobloxopen/atlas-pubsub)
+[![Code Coverage](https://img.shields.io/codecov/c/github/infobloxopen/atlas-pubsub/master.svg)](https://codecov.io/github/infobloxopen/atlas-pubsub?branch=master)
+
+
+## Pub/Sub implementations
 Each package within this directory is a different implementation of a pub/sub message broker that complies with the interface declared in `interface.go`.
 
 ### aws
