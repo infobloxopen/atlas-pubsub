@@ -54,7 +54,7 @@ image:
 	@docker build -t $(IMAGE_NAME) -f docker/Dockerfile .
 
 # Builds the hello example images 
-image-example: image
+image-example: 
 	@docker build -t $(IMAGE_NAME_PUB) -f docker/Dockerfile.publisher .
 	@docker build -t $(IMAGE_NAME_SUB) -f docker/Dockerfile.subscriber .
 
@@ -95,3 +95,5 @@ remove-example:
 vendor:
 	glide update -v
 
+temp-create-pubsub:
+	cat pubsub.yaml | envsubst ' $AWS_ACCESS_KEY$AWS_ACCESS_KEY_ID$AWS_SECRET_ACCESS_KEY$AWS_SECRET_KEY'| ks create -f pubsub.yaml

@@ -15,11 +15,12 @@ import (
 	"google.golang.org/grpc"
 )
 
+var url = flag.String("url", ":8080", "the grpc url to the pubsub server")
 var topic = flag.String("topic", hello.DefaultTopicName, "the topic to publish to")
 
 func main() {
 	flag.Parse()
-	conn, err := grpc.Dial("pubsub.atlas.svc.cluster.local:8081", grpc.WithInsecure())
+	conn, err := grpc.Dial(*url, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("failed to dial to grpc server: %v", err)
 	}

@@ -1,0 +1,6 @@
+{
+	"ImportPath": "github.com/infobloxopen/atlas-pubsub",
+	"GoVersion": "go1.10",
+	"GodepVersion": "v80",
+	"Deps": []
+}

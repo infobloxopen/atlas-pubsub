@@ -13,33 +13,42 @@ import (
 	"google.golang.org/grpc"
 )
 
+var url = flag.String("url", ":8080", "the grpc url to the pubsub server")
 var topic = flag.String("topic", hello.DefaultTopicName, "the topic to subscribe to")
 var subscriptionID = flag.String("subID", hello.DefaultSubscriberID, "the subscription ID for the topic")
 
 func main() {
+	log.Println("Inside Subscriber Example")
 	flag.Parse()
-	conn, err := grpc.Dial("pubsub.atlas.svc.cluster.local:8081", grpc.WithInsecure())
-
+	conn, err := grpc.Dial(*url, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("failed to dial to grpc server: %v", err)
 	}
-	s := pubsubgrpc.NewSubscriber(*topic, *subscriptionID, conn)
+	// s := pubsubgrpc.NewSubscriber(*topic, *subscriptionID, conn)
+
+	s := pubsubgrpc.NewSubscriber(*topic, "testroman", conn)
 
 	c, e := s.Start(context.Background())
-
 	for {
+		log.Println("Inside for loop")
 		select {
 		case msg, isOpen := <-c:
+			log.Println("Inside if msg received")
 			if !isOpen {
-				log.Fatalln("subscription channel closed")
+				// log.Fatalln("subscription channel closed")
+
+				log.Println("Not open")
 				return
 			}
 			greeting := string(msg.Message())
 			log.Printf("received message: %q", greeting)
+
+			log.Println("Inside received message " + greeting)
 			if err := msg.Ack(); err != nil {
 				log.Fatalf("failed to ack messageID %q: %v", msg.MessageID(), err)
 			}
 		case err := <-e:
+			log.Println("Inside error")
 			log.Fatalf("encountered error reading subscription: %v", err)
 		}
 	}
