@@ -12,13 +12,13 @@ spec:
     spec: 
       containers:
       - name: pubsub-sub
-        image: infobloxcto/atlas.pubsub-sub:c625301-dirty
+        image: infobloxcto/atlas.pubsub-sub:c18518c-dirty
         imagePullPolicy: Always
         env:
         ports:
           - name: grpc
-            containerPort: 8081 
+            containerPort: 80
         args: [
-            # "-log",
+            "-url=pubsub.atlas.svc:80",
             "debug"
          ]

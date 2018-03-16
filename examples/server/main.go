@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-var port = flag.String("p", "8081", "the port to listen to")
+var port = flag.String("p", "80", "the port to listen to")
 
 func main() {
 	log.Println("starting aws pubsub server")
