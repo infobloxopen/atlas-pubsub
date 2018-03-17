@@ -73,7 +73,16 @@ push-example:
 
 # Runs the tests
 test:
-	go test --cover ./...
+	echo "" > coverage.txt
+	for d in `go list ./... | grep -v vendor`; do \
+                t=$$(date +%s); \
+                go test -v -coverprofile=cover.out -covermode=atomic $$d || exit 1; \
+                echo "Coverage test $$d took $$(($$(date +%s)-t)) seconds"; \
+                if [ -f cover.out ]; then \
+                        cat cover.out >> coverage.txt; \
+                        rm cover.out; \
+                fi; \
+        done
 
 # --- Kuberenetes deployment ---
 # Deploy the pubsub service in kubernetes
