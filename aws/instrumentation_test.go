@@ -26,8 +26,17 @@ type mockSNS struct {
 	spiedPublishInput   *sns.PublishInput
 	stubbedPublishError error
 
-	spiedSubscribeInput   *sns.SubscribeInput
-	stubbedSubscribeError error
+	spiedSubscribeInput    *sns.SubscribeInput
+	stubbedSubscribeOutput *sns.SubscribeOutput
+	stubbedSubscribeError  error
+
+	spiedUnsubscribeInput    *sns.UnsubscribeInput
+	stubbedUnsubscribeOutput *sns.UnsubscribeOutput
+	stubbedUnsubscribeError  error
+
+	spiedGetSubscriptionAttributesInput    *sns.GetSubscriptionAttributesInput
+	stubbedGetSubscriptionAttributesOutput *sns.GetSubscriptionAttributesOutput
+	stubbedGetSubscriptionAttributesError  error
 
 	spiedSetSubscriptionAttributesInput   *sns.SetSubscriptionAttributesInput
 	stubbedSetSubscriptionAttributesError error
@@ -41,13 +50,36 @@ func (mock *mockSNS) CreateTopic(input *sns.CreateTopicInput) (*sns.CreateTopicO
 
 func (mock *mockSNS) Subscribe(input *sns.SubscribeInput) (*sns.SubscribeOutput, error) {
 	mock.spiedSubscribeInput = input
-	return &sns.SubscribeOutput{}, mock.stubbedSubscribeError
+	output := mock.stubbedSubscribeOutput
+	if output == nil {
+		output = &sns.SubscribeOutput{}
+	}
+	return output, mock.stubbedSubscribeError
+}
+
+func (mock *mockSNS) Unsubscribe(input *sns.UnsubscribeInput) (*sns.UnsubscribeOutput, error) {
+	mock.spiedUnsubscribeInput = input
+	output := mock.stubbedUnsubscribeOutput
+	if output == nil {
+		output = &sns.UnsubscribeOutput{}
+	}
+
+	return output, mock.stubbedUnsubscribeError
 }
 
 // PublishWithContext records the input argument passed in and returns a stub response
 func (mock *mockSNS) PublishWithContext(ctx aws.Context, input *sns.PublishInput, opts ...request.Option) (*sns.PublishOutput, error) {
 	mock.spiedPublishInput = input
 	return &sns.PublishOutput{MessageId: aws.String("someUniqueMessageId")}, mock.stubbedPublishError
+}
+
+func (mock *mockSNS) GetSubscriptionAttributes(input *sns.GetSubscriptionAttributesInput) (*sns.GetSubscriptionAttributesOutput, error) {
+	mock.spiedGetSubscriptionAttributesInput = input
+	output := mock.stubbedGetSubscriptionAttributesOutput
+	if output == nil {
+		output = &sns.GetSubscriptionAttributesOutput{}
+	}
+	return output, mock.stubbedGetSubscriptionAttributesError
 }
 
 func (mock *mockSNS) SetSubscriptionAttributes(input *sns.SetSubscriptionAttributesInput) (*sns.SetSubscriptionAttributesOutput, error) {
@@ -174,6 +206,14 @@ func wrapIntoSQSMessage(testMsg []byte, receiptHandle *string, md map[string]str
 		ReceiptHandle:     handle,
 		MessageAttributes: attrs,
 	}, nil
+}
+
+func mustEncodeFilterPolicy(filter map[string]string) *string {
+	f, e := encodeFilterPolicy(filter)
+	if e != nil {
+		panic(e)
+	}
+	return f
 }
 
 func TestWrapIntoSQSMessage(t *testing.T) {
