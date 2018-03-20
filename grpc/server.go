@@ -1,8 +1,9 @@
 package grpc
 
 import (
-	"context"
 	"log"
+
+	"golang.org/x/net/context"
 
 	pubsub "github.com/infobloxopen/atlas-pubsub"
 )
