@@ -24,8 +24,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to dial to grpc server: %v", err)
 	}
+	p := pubsubgrpc.NewPublisher(*topic, conn)
+
 	for i := 0; ; i++ {
-		p := pubsubgrpc.NewPublisher(*topic, conn)
 		g := hello.Greetings[i%len(hello.Greetings)]
 
 		msg := fmt.Sprintf("%s %s", g.Message, time.Now())
