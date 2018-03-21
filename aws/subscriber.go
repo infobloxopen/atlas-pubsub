@@ -2,6 +2,7 @@ package aws
 
 import (
 	"context"
+	"reflect"
 	"sync"
 	"time"
 
@@ -142,19 +143,47 @@ func (s *awsSubscriber) ensureSubscription(topic, subscriptionID string) error {
 }
 
 func (s *awsSubscriber) ensureFilterPolicy(filter map[string]string) error {
-	newFilterPolicy, err := encodeFilterPolicy(filter)
+	attrs, err := s.sns.GetSubscriptionAttributes(&sns.GetSubscriptionAttributesInput{SubscriptionArn: s.subscriptionArn})
 	if err != nil {
 		return err
 	}
-	if newFilterPolicy != nil {
-		_, ssaErr := s.sns.SetSubscriptionAttributes(&sns.SetSubscriptionAttributesInput{
+	currentFilterPolicy, err := decodeFilterPolicy(attrs.Attributes["FilterPolicy"])
+	if err != nil || !reflect.DeepEqual(currentFilterPolicy, filter) {
+		/*
+		   If the new filter is empty, we need to delete the subscription and recreate it.
+		   This is needed because the AWS API won't allow you to set an empty FilterPolicy
+		*/
+		if len(filter) == 0 {
+			if _, err := s.sns.Unsubscribe(&sns.UnsubscribeInput{
+				SubscriptionArn: s.subscriptionArn,
+			}); err != nil {
+				return err
+			}
+			resp, err := s.sns.Subscribe(&sns.SubscribeInput{
+				Protocol: aws.String("sqs"),
+				TopicArn: s.topicArn,
+				Endpoint: s.queueArn,
+			})
+			if err != nil {
+				return err
+			}
+			s.subscriptionArn = resp.SubscriptionArn
+			return nil
+		}
+
+		newFilterPolicy, err := encodeFilterPolicy(filter)
+		if err != nil {
+			return err
+		}
+		if _, ssaErr := s.sns.SetSubscriptionAttributes(&sns.SetSubscriptionAttributesInput{
 			SubscriptionArn: s.subscriptionArn,
 			AttributeName:   aws.String("FilterPolicy"),
 			AttributeValue:  newFilterPolicy,
-		})
-
-		return ssaErr
+		}); ssaErr != nil {
+			return ssaErr
+		}
 	}
+
 	return nil
 }
 

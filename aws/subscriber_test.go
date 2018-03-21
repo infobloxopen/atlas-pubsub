@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sqs"
 )
 
@@ -20,7 +21,7 @@ func TestStart(t *testing.T) {
 
 	sqsMock := mockSQS{
 		stubbedReceiveMessageMessages: []*sqs.Message{
-			mustWrapIntoSQSMessage(expectedMessage, aws.String(expectedHandle), expectedMetadata),
+			mustWrapIntoSQSMessage(t, expectedMessage, aws.String(expectedHandle), expectedMetadata),
 			&sqs.Message{Body: aws.String("some mangled message")},
 		},
 	}
@@ -89,9 +90,9 @@ func TestStart(t *testing.T) {
 	}
 }
 
-// Verify that the channel is closed immediately if there are errors trying to
+// verify that the channel is closed immediately if there are errors trying to
 // set a filter policy
-func TestStart_EnsureFilter(t *testing.T) {
+func TestStart_FilterPolicyError_ClosesMessageChannel(t *testing.T) {
 	snsMock := mockSNS{}
 
 	s, serr := newSubscriber(&snsMock, &mockSQS{}, "topic", "subscriptionID")
@@ -117,5 +118,70 @@ func TestStart_EnsureFilter(t *testing.T) {
 				t.Errorf("expected msgChannel to be closed, but was open")
 			}
 		}
+	}
+}
+
+// verify that no calls to update the subscription happens if the passed-in filter matches the existing filter
+func TestEnsureFilterPolicy_NewFilterMatches_NoModificationDone(t *testing.T) {
+	filterPolicy := map[string]string{"foo": "bar"}
+	snsMock := &mockSNS{
+		stubbedGetSubscriptionAttributesOutput: &sns.GetSubscriptionAttributesOutput{Attributes: map[string]*string{"FilterPolicy": mustEncodeFilterPolicy(t, filterPolicy)}},
+	}
+	subscriber := awsSubscriber{
+		sns: snsMock,
+	}
+	subscriber.ensureFilterPolicy(filterPolicy)
+	if snsMock.spiedSubscribeInput != nil {
+		t.Error("sns.Subscribe was called, but shouldn't have been")
+	}
+	if snsMock.spiedSetSubscriptionAttributesInput != nil {
+		t.Error("sns.SetSubscriptionAttributes was called, but shouldn't have been")
+	}
+}
+
+// verify that if you're trying to clear a filter policy, it unsubscribes then
+// resubscribes
+func TestEnsureFilterPolicy_ClearingFilter_ResubscribesToPolicy(t *testing.T) {
+	snsMock := &mockSNS{
+		stubbedGetSubscriptionAttributesOutput: &sns.GetSubscriptionAttributesOutput{
+			Attributes: map[string]*string{
+				"FilterPolicy": mustEncodeFilterPolicy(t, map[string]string{"foo": "bar"}),
+			},
+		},
+		stubbedSubscribeOutput: &sns.SubscribeOutput{SubscriptionArn: aws.String("NewSubscriptionArn")},
+	}
+	subscriber := awsSubscriber{
+		sns:             snsMock,
+		subscriptionArn: aws.String("testSubscriptionArn"),
+	}
+	subscriber.ensureFilterPolicy(nil)
+	if snsMock.spiedUnsubscribeInput == nil {
+		t.Error("expected Unsubsribe to be called, but wasn't")
+	}
+	if snsMock.spiedSubscribeInput == nil {
+		t.Error("expected Subscribe to be called, but wasn't")
+	}
+	if snsMock.spiedSetSubscriptionAttributesInput != nil {
+		t.Error("SetSubscriptionAttributesInput was called, but shouldn't have been")
+	}
+}
+
+// verify that if you pass in a different filter than what was there, it'll update
+// the filter policy in SNS
+func TestEnsureFilterPolicy_DifferentPolicy_SetsSubscriptionAttributes(t *testing.T) {
+	snsMock := mockSNS{
+		stubbedGetSubscriptionAttributesOutput: &sns.GetSubscriptionAttributesOutput{
+			Attributes: map[string]*string{
+				"FilterPolicy": mustEncodeFilterPolicy(t, map[string]string{"foo": "bar"}),
+			},
+		},
+	}
+	subscriber := awsSubscriber{sns: &snsMock}
+	subscriber.ensureFilterPolicy(map[string]string{"baz": "qux"})
+	if snsMock.spiedSubscribeInput != nil {
+		t.Error("sns.Subscribe was called, but shouldn't have been")
+	}
+	if snsMock.spiedSetSubscriptionAttributesInput == nil {
+		t.Error("expected SetSubscriptionAttributes to be called, but wasn't")
 	}
 }

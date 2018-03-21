@@ -128,6 +128,33 @@ func TestEncodeFilterPolicy(t *testing.T) {
 	}
 }
 
+func TestDecodeFilterPolicy(t *testing.T) {
+	testCases := []struct {
+		input    *string
+		expected interface{}
+	}{
+		{nil, make(map[string]string)},
+		{aws.String("{\"foo\":[\"bar\"]}"), map[string]string{"foo": "bar"}},
+		{aws.String("{\"foo\":[\"bar\", \"baz\"]}"), errors.New("")},
+		{aws.String("some mangled thing"), errors.New("")},
+	}
+	for _, testCase := range testCases {
+		expected := testCase.expected
+		if actual, err := decodeFilterPolicy(testCase.input); err != nil {
+			if _, ok := expected.(error); !ok {
+				t.Errorf("expected %v, but got %v", expected, err)
+			}
+			if len(actual) != 0 {
+				t.Errorf("expected filter policy to be empty, but was %v", actual)
+			}
+		} else {
+			if !reflect.DeepEqual(expected, actual) {
+				t.Errorf("expected %v, but got %v", expected, actual)
+			}
+		}
+	}
+}
+
 func TestDecodeFromSQSMessage(t *testing.T) {
 	expectedValue := []byte("foo")
 
