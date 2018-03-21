@@ -27,6 +27,12 @@ func main() {
 	}
 	grpcServer := grpc.NewServer()
 
+	// Checks to see if aws config credentials are valid
+	vrperr := pubsubaws.VerifyPermissions()
+	if vrperr != nil {
+		log.Fatalf("failed to validate aws config %s", vrperr.Error())
+	}
+
 	pubsubServer, err := newAWSPubSubServer()
 	if err != nil {
 		log.Fatalf("failed to create aws pubsub server: %v", err)
