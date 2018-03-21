@@ -1,10 +1,13 @@
 package aws
 
 import (
+	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -14,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sns/snsiface"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
+	pubsub "github.com/infobloxopen/atlas-pubsub"
 )
 
 // some arbitrary prefix I came up with to help distinguish between aws broker
@@ -28,6 +32,96 @@ const subscriptionIDMaxLength = 40
 // AWS SNS topic names can be up to 256 characters, but because of our naming
 // convention we're limited to the total 80-character max of the SQS name length.
 const topicNameMaxLength = 40 - len(topicNamePrefix)
+
+// VerifyPermissions checks if the aws config exists and checks if it has permissions to
+// create sns topics, send messages, create SQS topics, delete topics, and delete sqs queues
+func VerifyPermissions(cfg *aws.Config) error {
+
+	// Check if environment contains aws config
+	_, errConfig := cfg.Credentials.Get()
+	if errConfig != nil {
+		return errConfig
+	}
+
+	topic := fmt.Sprintf("verifyPermissions")
+	subscriptionID := "verifySubsId"
+
+	s, subErr := NewSubscriber(cfg, topic, subscriptionID)
+	if subErr != nil {
+		return errors.New("error, failed to create a SQS queue: " + subErr.Error())
+	}
+
+	publisher, pubErr := NewPublisher(cfg, topic)
+	if pubErr != nil {
+		return errors.New("error, failed to create a SNS topic: " + pubErr.Error())
+	}
+
+	return verifyPermissions(s, publisher, topic, subscriptionID)
+}
+
+// verifyPermissions checks if the aws config has correct permissions
+func verifyPermissions(subscriber pubsub.Subscriber, publisher pubsub.Publisher, topic string, subID string) error {
+	defer func() {
+		// Delete the publisher and subscriber queue
+		DeletePublisherTopic(topic)
+		DeleteSubscriberByTopic(topic, subID)
+	}()
+
+	ctx, stop := context.WithTimeout(context.Background(), 1*time.Second)
+	defer stop()
+
+	c, e := subscriber.Start(ctx, nil)
+
+	testMessage := []byte("Permissions Verification Test Message.")
+	errSend := publisher.Publish(ctx, testMessage, nil)
+	if errSend != nil {
+		return errors.New("failed to push message " + errSend.Error())
+	}
+
+	select {
+	case msg, isOpen := <-c:
+		if !isOpen {
+			return errors.New("error, failed to open message channel")
+		}
+		if bytes.Equal(msg.Message(), testMessage) {
+			return nil
+		}
+		return errors.New("error, failed to receive message from publisher")
+	case err := <-e:
+		return err
+	}
+
+}
+
+// DeletePublisherTopic deletes the SNS topic
+func DeletePublisherTopic(topic string) error {
+	svc := sns.New(session.New())
+
+	paramsDelete := &sns.DeleteTopicInput{
+		TopicArn: aws.String("arn:aws:sns:us-east-1:405093580753:pubsub__" + topic),
+	}
+	_, err := svc.DeleteTopic(paramsDelete)
+	if err != nil {
+		return errors.New("error, failed to delete SNS topic: " + err.Error())
+	}
+	return nil
+}
+
+// DeleteSubscriberByTopic deletes the SQS queue that has given topic and subscription id
+func DeleteSubscriberByTopic(topic string, subID string) error {
+	svc := sqs.New(session.New())
+
+	qURL := "https://sqs.us-east-1.amazonaws.com/405093580753/pubsub__" + topic + "-" + subID
+	paramsDelete := &sqs.DeleteQueueInput{
+		QueueUrl: aws.String(qURL),
+	}
+	_, err := svc.DeleteQueue(paramsDelete)
+	if err != nil {
+		return errors.New("error, failed to delete SQS queue: " + err.Error())
+	}
+	return nil
+
+}
 
 // Utility functions for performing AWS commands (create SNS topic, SQS queue, etc)
 
