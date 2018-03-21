@@ -168,10 +168,10 @@ func (mock *mockSQS) DeleteMessage(input *sqs.DeleteMessageInput) (*sqs.DeleteMe
 
 // mustWrapIntoSQSMessage panics if wrapIntoSQSMessage returns an error. This is
 // a convenience format for cases where you want to inline the wrapped message
-func mustWrapIntoSQSMessage(testMsg []byte, receiptHandle *string, md map[string]string) *sqs.Message {
+func mustWrapIntoSQSMessage(t *testing.T, testMsg []byte, receiptHandle *string, md map[string]string) *sqs.Message {
 	msg, err := wrapIntoSQSMessage(testMsg, receiptHandle, md)
 	if err != nil {
-		panic(err)
+		t.Fatalf("error wrapping into SQS message: %v", err)
 	}
 
 	return msg
@@ -210,10 +210,10 @@ func wrapIntoSQSMessage(testMsg []byte, receiptHandle *string, md map[string]str
 
 // mustEncodeFilterPolicy panics if encodeFilterPolicy returns an error. This is
 // a convenience format for cases where you want to inline the call
-func mustEncodeFilterPolicy(filter map[string]string) *string {
+func mustEncodeFilterPolicy(t *testing.T, filter map[string]string) *string {
 	f, e := encodeFilterPolicy(filter)
 	if e != nil {
-		panic(e)
+		t.Fatalf("error encoding filter policy: %v", e)
 	}
 	return f
 }
@@ -222,7 +222,7 @@ func TestWrapIntoSQSMessage(t *testing.T) {
 	expected := []byte("foo")
 	expectedHandle := "bar"
 	expectedMd := map[string]string{"baz": "qux"}
-	msg := mustWrapIntoSQSMessage(expected, aws.String(expectedHandle), expectedMd)
+	msg := mustWrapIntoSQSMessage(t, expected, aws.String(expectedHandle), expectedMd)
 
 	{ // verify message body
 		actual, _ := decodeFromSQSMessage(msg.Body)

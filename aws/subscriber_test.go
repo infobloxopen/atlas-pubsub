@@ -21,7 +21,7 @@ func TestStart(t *testing.T) {
 
 	sqsMock := mockSQS{
 		stubbedReceiveMessageMessages: []*sqs.Message{
-			mustWrapIntoSQSMessage(expectedMessage, aws.String(expectedHandle), expectedMetadata),
+			mustWrapIntoSQSMessage(t, expectedMessage, aws.String(expectedHandle), expectedMetadata),
 			&sqs.Message{Body: aws.String("some mangled message")},
 		},
 	}
@@ -125,7 +125,7 @@ func TestStart_FilterPolicyError_ClosesMessageChannel(t *testing.T) {
 func TestEnsureFilterPolicy_NewFilterMatches_NoModificationDone(t *testing.T) {
 	filterPolicy := map[string]string{"foo": "bar"}
 	snsMock := &mockSNS{
-		stubbedGetSubscriptionAttributesOutput: &sns.GetSubscriptionAttributesOutput{Attributes: map[string]*string{"FilterPolicy": mustEncodeFilterPolicy(filterPolicy)}},
+		stubbedGetSubscriptionAttributesOutput: &sns.GetSubscriptionAttributesOutput{Attributes: map[string]*string{"FilterPolicy": mustEncodeFilterPolicy(t, filterPolicy)}},
 	}
 	subscriber := awsSubscriber{
 		sns: snsMock,
@@ -145,7 +145,7 @@ func TestEnsureFilterPolicy_ClearingFilter_ResubscribesToPolicy(t *testing.T) {
 	snsMock := &mockSNS{
 		stubbedGetSubscriptionAttributesOutput: &sns.GetSubscriptionAttributesOutput{
 			Attributes: map[string]*string{
-				"FilterPolicy": mustEncodeFilterPolicy(map[string]string{"foo": "bar"}),
+				"FilterPolicy": mustEncodeFilterPolicy(t, map[string]string{"foo": "bar"}),
 			},
 		},
 		stubbedSubscribeOutput: &sns.SubscribeOutput{SubscriptionArn: aws.String("NewSubscriptionArn")},
@@ -172,7 +172,7 @@ func TestEnsureFilterPolicy_DifferentPolicy_SetsSubscriptionAttributes(t *testin
 	snsMock := mockSNS{
 		stubbedGetSubscriptionAttributesOutput: &sns.GetSubscriptionAttributesOutput{
 			Attributes: map[string]*string{
-				"FilterPolicy": mustEncodeFilterPolicy(map[string]string{"foo": "bar"}),
+				"FilterPolicy": mustEncodeFilterPolicy(t, map[string]string{"foo": "bar"}),
 			},
 		},
 	}
