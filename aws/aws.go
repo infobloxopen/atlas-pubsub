@@ -194,17 +194,19 @@ func encodeFilterPolicy(filter map[string]string) (*string, error) {
 // value into a map to meet the subscriber interface
 func decodeFilterPolicy(filterPolicy *string) (map[string]string, error) {
 	decoded := make(map[string]string)
-	if filterPolicy != nil {
-		var unmarshalled map[string][]string
-		if err := json.Unmarshal([]byte(*filterPolicy), &unmarshalled); err != nil {
-			return nil, err
+	if filterPolicy == nil {
+		return decoded, nil
+	}
+
+	var unmarshalled map[string][]string
+	if err := json.Unmarshal([]byte(*filterPolicy), &unmarshalled); err != nil {
+		return nil, err
+	}
+	for k, v := range unmarshalled {
+		if len(v) > 1 {
+			return nil, fmt.Errorf("invalid filter policy for pub/sub: expected single filter parameter but got %v", v)
 		}
-		for k, v := range unmarshalled {
-			if len(v) > 1 {
-				return nil, fmt.Errorf("invalid filter policy for pub/sub: expected single filter parameter but got %v", v)
-			}
-			decoded[k] = v[0]
-		}
+		decoded[k] = v[0]
 	}
 	return decoded, nil
 }

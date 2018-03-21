@@ -208,6 +208,8 @@ func wrapIntoSQSMessage(testMsg []byte, receiptHandle *string, md map[string]str
 	}, nil
 }
 
+// mustEncodeFilterPolicy panics if encodeFilterPolicy returns an error. This is
+// a convenience format for cases where you want to inline the call
 func mustEncodeFilterPolicy(filter map[string]string) *string {
 	f, e := encodeFilterPolicy(filter)
 	if e != nil {

@@ -168,18 +168,19 @@ func (s *awsSubscriber) ensureFilterPolicy(filter map[string]string) error {
 				return err
 			}
 			s.subscriptionArn = resp.SubscriptionArn
-		} else {
-			newFilterPolicy, err := encodeFilterPolicy(filter)
-			if err != nil {
-				return err
-			}
-			if _, ssaErr := s.sns.SetSubscriptionAttributes(&sns.SetSubscriptionAttributesInput{
-				SubscriptionArn: s.subscriptionArn,
-				AttributeName:   aws.String("FilterPolicy"),
-				AttributeValue:  newFilterPolicy,
-			}); ssaErr != nil {
-				return ssaErr
-			}
+			return nil
+		}
+
+		newFilterPolicy, err := encodeFilterPolicy(filter)
+		if err != nil {
+			return err
+		}
+		if _, ssaErr := s.sns.SetSubscriptionAttributes(&sns.SetSubscriptionAttributesInput{
+			SubscriptionArn: s.subscriptionArn,
+			AttributeName:   aws.String("FilterPolicy"),
+			AttributeValue:  newFilterPolicy,
+		}); ssaErr != nil {
+			return ssaErr
 		}
 	}
 
