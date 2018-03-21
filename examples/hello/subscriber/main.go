@@ -16,7 +16,7 @@ import (
 var url = flag.String("url", ":8080", "the grpc url to the pubsub server")
 var topic = flag.String("topic", hello.DefaultTopicName, "the topic to subscribe to")
 var subscriptionID = flag.String("subID", hello.DefaultSubscriberID, "the subscription ID for the topic")
-var languageFilter = flag.String("lang", "", "if present, will only show messages with metadata tagged for the given language")
+var languageFilter = flag.String("language", "", "if present, will only show messages with metadata tagged for the given language")
 
 func main() {
 	flag.Parse()
