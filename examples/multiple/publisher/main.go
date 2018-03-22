@@ -10,13 +10,13 @@ import (
 	"log"
 	"time"
 
-	"github.com/infobloxopen/atlas-pubsub/examples/unicast"
+	"github.com/infobloxopen/atlas-pubsub/examples/multiple"
 	pubsubgrpc "github.com/infobloxopen/atlas-pubsub/grpc"
 	"google.golang.org/grpc"
 )
 
 var url = flag.String("url", ":8080", "the grpc url to the pubsub server")
-var topic = flag.String("topic", unicast.DefaultTopicName, "the topic to publish to")
+var topic = flag.String("topic", multiple.DefaultTopicName, "the topic to publish to")
 
 func main() {
 	flag.Parse()
@@ -27,7 +27,7 @@ func main() {
 	p := pubsubgrpc.NewPublisher(*topic, conn)
 
 	for i := 0; ; i++ {
-		g := unicast.Messages[i%len(unicast.Messages)]
+		g := multiple.Messages[i%len(multiple.Messages)]
 
 		msg := fmt.Sprintf("%s %s", g.Message, time.Now())
 		md := map[string]string{"dst": g.Dst}

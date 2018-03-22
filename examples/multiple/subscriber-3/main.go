@@ -8,15 +8,15 @@ import (
 	"flag"
 	"log"
 
-	"github.com/infobloxopen/atlas-pubsub/examples/unicast"
+	"github.com/infobloxopen/atlas-pubsub/examples/multiple"
 	pubsubgrpc "github.com/infobloxopen/atlas-pubsub/grpc"
 	"google.golang.org/grpc"
 )
 
 var url = flag.String("url", ":8080", "the grpc url to the pubsub server")
-var topic = flag.String("topic", unicast.DefaultTopicName, "the topic to subscribe to")
-var subscriptionID = flag.String("subID", unicast.DefaultSubscriberID, "the subscription ID for the topic")
-var dstFilter = flag.String("dst", "subscriber-1", "Listen for this destination")
+var topic = flag.String("topic", multiple.DefaultTopicName, "the topic to subscribe to")
+var subscriptionID = flag.String("subID", multiple.DefaultSubscriberID3, "the subscription ID for the topic")
+var dstFilter = flag.String("dst", "subscriber-3", "Listen for this destination")
 
 func main() {
 	flag.Parse()

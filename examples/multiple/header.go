@@ -1,10 +1,13 @@
-package unicast
+package multiple
 
 // DefaultTopicName is the default topic name to use for this example
-const DefaultTopicName = "unicast_3_demo"
+const DefaultTopicName = "unicast_4_demo"
 
 // DefaultSubscriberID is the default id to use for this example
-const DefaultSubscriberID = "unicast_3_demo_subscriberid"
+const DefaultSubscriberID1 = "unicast_4_demo_subscriberid-1"
+const DefaultSubscriberID2 = "unicast_4_demo_subscriberid-2"
+const DefaultSubscriberID3 = "unicast_4_demo_subscriberid-3"
+const DefaultSubscriberIDAll = "unicast_4_demo_subscriberid-all"
 
 // Greetings are different languages that the example will use. The language
 // will be set in the metadata and subscribers can filter based on what language
