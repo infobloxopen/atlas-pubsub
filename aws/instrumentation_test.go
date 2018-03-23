@@ -40,12 +40,22 @@ type mockSNS struct {
 
 	spiedSetSubscriptionAttributesInput   *sns.SetSubscriptionAttributesInput
 	stubbedSetSubscriptionAttributesError error
+
+	spiedDeleteTopicInput   *sns.DeleteTopicInput
+	spiedDeleteTopicOutput  *sns.DeleteTopicOutput
+	stubbedDeleteTopicError error
 }
 
 // CreateTopic records the arguments passed in and returns the specified mocked error
 func (mock *mockSNS) CreateTopic(input *sns.CreateTopicInput) (*sns.CreateTopicOutput, error) {
 	mock.spiedCreateTopicInput = input
 	return &sns.CreateTopicOutput{TopicArn: aws.String("some fake topic arn")}, mock.stubbedCreateTopicError
+}
+
+// DeleteTopic records the input argument passed in and returns a stub response
+func (mock *mockSNS) DeleteTopic(input *sns.DeleteTopicInput) (*sns.DeleteTopicOutput, error) {
+	mock.spiedDeleteTopicInput = input
+	return &sns.DeleteTopicOutput{}, mock.stubbedDeleteTopicError
 }
 
 func (mock *mockSNS) Subscribe(input *sns.SubscribeInput) (*sns.SubscribeOutput, error) {
@@ -109,6 +119,10 @@ type mockSQS struct {
 
 	spiedDeleteMessageInput   *sqs.DeleteMessageInput
 	stubbedDeleteMessageError error
+
+	spiedDeleteQueueInput   *sqs.DeleteQueueInput
+	spiedDeleteQueueOutput  *sqs.DeleteQueueOutput
+	stubbedDeleteQueueError error
 }
 
 func (mock *mockSQS) GetQueueUrl(input *sqs.GetQueueUrlInput) (*sqs.GetQueueUrlOutput, error) {
@@ -164,6 +178,11 @@ func (mock *mockSQS) ReceiveMessageWithContext(ctx aws.Context, input *sqs.Recei
 func (mock *mockSQS) DeleteMessage(input *sqs.DeleteMessageInput) (*sqs.DeleteMessageOutput, error) {
 	mock.spiedDeleteMessageInput = input
 	return nil, mock.stubbedDeleteMessageError
+}
+
+func (mock *mockSQS) DeleteQueue(input *sqs.DeleteQueueInput) (*sqs.DeleteQueueOutput, error) {
+	mock.spiedDeleteQueueInput = input
+	return &sqs.DeleteQueueOutput{}, mock.stubbedDeleteQueueError
 }
 
 // mustWrapIntoSQSMessage panics if wrapIntoSQSMessage returns an error. This is

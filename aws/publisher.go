@@ -24,7 +24,7 @@ func NewPublisher(topic string) (pubsub.Publisher, error) {
 	return newPublisher(sns.New(sess), topic)
 }
 
-func newPublisher(snsClient snsiface.SNSAPI, topic string) (pubsub.Publisher, error) {
+func newPublisher(snsClient snsiface.SNSAPI, topic string) (*publisher, error) {
 	topicArn, err := ensureTopic(topic, snsClient)
 	if err != nil {
 		return nil, err
@@ -35,7 +35,7 @@ func newPublisher(snsClient snsiface.SNSAPI, topic string) (pubsub.Publisher, er
 		topicArn: *topicArn,
 	}
 
-	return p, nil
+	return &p, nil
 }
 
 type publisher struct {
@@ -54,4 +54,11 @@ func (p publisher) Publish(ctx context.Context, msg []byte, metadata map[string]
 	})
 
 	return publishErr
+}
+
+func (p publisher) DeleteTopic() error {
+	_, deleteErr := p.sns.DeleteTopic(&sns.DeleteTopicInput{
+		TopicArn: aws.String(p.topicArn),
+	})
+	return deleteErr
 }
