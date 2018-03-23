@@ -32,9 +32,8 @@ func main() {
 	cfg := aws.NewConfig().WithCredentials(credentials.NewEnvCredentials())
 
 	// Checks to see if aws config credentials are valid
-	vrperr := pubsubaws.VerifyPermissions(cfg)
-	if vrperr != nil {
-		log.Fatalf("failed to validate aws config %s", vrperr.Error())
+	if vrperr := pubsubaws.VerifyPermissions(cfg); vrperr != nil {
+		log.Fatal(vrperr)
 	}
 
 	pubsubServer, err := newAWSPubSubServer(cfg)
