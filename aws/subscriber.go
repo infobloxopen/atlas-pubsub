@@ -72,11 +72,11 @@ func (s *awsSubscriber) Start(ctx context.Context, filter map[string]string) (<-
 }
 
 func (s *awsSubscriber) AckMessage(ctx context.Context, messageID string) error {
-	_, error := s.sqs.DeleteMessage(&sqs.DeleteMessageInput{
+	_, err := s.sqs.DeleteMessage(&sqs.DeleteMessageInput{
 		QueueUrl:      s.queueURL,
 		ReceiptHandle: aws.String(messageID),
 	})
-	return error
+	return err
 }
 
 func (s *awsSubscriber) ExtendAckDeadline(ctx context.Context, messageID string, newDuration time.Duration) error {
@@ -84,10 +84,10 @@ func (s *awsSubscriber) ExtendAckDeadline(ctx context.Context, messageID string,
 }
 
 func (s *awsSubscriber) DeleteSubscription() error {
-	_, error := s.sqs.DeleteQueue(&sqs.DeleteQueueInput{
+	_, err := s.sqs.DeleteQueue(&sqs.DeleteQueueInput{
 		QueueUrl: s.queueURL,
 	})
-	return error
+	return err
 }
 
 type awsMessage struct {

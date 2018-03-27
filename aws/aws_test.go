@@ -14,6 +14,70 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs"
 )
 
+func TestVerifyPermissions(t *testing.T) {
+	// Create publihser
+	snsMock := mockSNS{}
+	p, err := newPublisher(&snsMock, "topic")
+	if err != nil {
+		t.Errorf("expected no error from newPublisher, but got: %v", err)
+		return
+	}
+
+	// Create a subscriber
+	expectedMessage := []byte("Wrong message")
+	expectedHandle := "fooHandle"
+	expectedMetadata := map[string]string{"foo": "bar"}
+	sqsMock := mockSQS{
+		stubbedReceiveMessageMessages: []*sqs.Message{
+			mustWrapIntoSQSMessage(t, expectedMessage, aws.String(expectedHandle), expectedMetadata),
+			&sqs.Message{Body: aws.String("some message")},
+		},
+	}
+	s, err := newSubscriber(&snsMock, &sqsMock, "topic", "subscriptionID")
+	if err != nil {
+		t.Errorf("expected no error from newSubscriber, but got: %v", err)
+		return
+	}
+	s.queueArn = aws.String("test-queue-arn")
+
+	// Test to see if publisher sends an error after running Publish code
+	snsMock.stubbedPublishError = errors.New("publish message error")
+	actual := verifyPermissions(s, p)
+	expected := snsMock.stubbedPublishError
+	if actual != expected {
+		t.Errorf("expected error %v, but got %v", expected, actual)
+	}
+
+	// Remove error and see if publish test passes
+	snsMock.stubbedPublishError = nil
+	metadata := map[string]string{"foo": "bar"}
+	message := encodeToSNSMessage([]byte("test"))
+	messageAttributes := encodeMessageAttributes(metadata)
+	snsMock.spiedPublishInput = &sns.PublishInput{
+		TopicArn:          aws.String(p.topicArn),
+		Message:           message,
+		MessageAttributes: messageAttributes,
+	}
+
+	// Test when sending a wrong message
+	expectedFail := ("error, received the wrong message from publisher")
+	actual = verifyPermissions(s, p)
+	if actual.Error() != expectedFail {
+		t.Errorf("expected error %v, but got %v", expectedFail, actual)
+	}
+
+	// Test when sending a good message
+	expectedMessage = []byte("Permissions Verification Test Message. Subscription queue: " + *s.queueArn)
+	sqsMock.stubbedReceiveMessageMessages = []*sqs.Message{
+		mustWrapIntoSQSMessage(t, []byte(expectedMessage), aws.String(expectedHandle), expectedMetadata),
+		&sqs.Message{Body: aws.String("some message")},
+	}
+	actual = verifyPermissions(s, p)
+	if actual != nil {
+		t.Errorf("expected no error but got %v", actual)
+	}
+}
+
 func TestTopicAndQueueNamingMaxLengths(t *testing.T) {
 	totalLength := len(topicNamePrefix) + topicNameMaxLength + subscriptionIDMaxLength
 	if totalLength > 80 {

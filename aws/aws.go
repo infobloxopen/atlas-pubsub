@@ -44,16 +44,16 @@ func VerifyPermissions() error {
 		return err
 	}
 
-	s, subErr := newSubscriber(sns.New(sess), sqs.New(sess), topic, subscriptionID)
-	if subErr != nil {
-		return subErr
+	subscriber, err := newSubscriber(sns.New(sess), sqs.New(sess), topic, subscriptionID)
+	if err != nil {
+		return err
 	}
 
-	publisher, pubErr := newPublisher(sns.New(sess), topic)
-	if pubErr != nil {
-		return pubErr
+	publisher, err := newPublisher(sns.New(sess), topic)
+	if err != nil {
+		return err
 	}
-	return verifyPermissions(s, publisher)
+	return verifyPermissions(subscriber, publisher)
 }
 
 // verifyPermissions checks if the aws config has correct permissions
@@ -66,12 +66,14 @@ func verifyPermissions(subscriber *awsSubscriber, publisher *publisher) error {
 
 	ctx, stop := context.WithTimeout(context.Background(), 1*time.Second)
 	defer stop()
-	c, e := subscriber.Start(ctx, nil)
 
-	testMessage := []byte("Permissions Verification Test Message. Id: " + uuid.New().String())
-	errSend := publisher.Publish(ctx, testMessage, nil)
-	if errSend != nil {
-		return errSend
+	// Filter for the correct subscription
+	md := map[string]string{"subscription": *subscriber.queueArn}
+	c, e := subscriber.Start(ctx, md)
+	testMessage := []byte("Permissions Verification Test Message. Subscription queue: " + *subscriber.queueArn)
+	err := publisher.Publish(ctx, testMessage, md)
+	if err != nil {
+		return err
 	}
 
 	select {
