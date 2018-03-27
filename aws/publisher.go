@@ -16,8 +16,8 @@ import (
 // Topic names must be made up of only uppercase and lowercase
 // ASCII letters, numbers, underscores, and hyphens, and must be between 1 and
 // 247 characters long.
-func NewPublisher(config *aws.Config, topic string) (pubsub.Publisher, error) {
-	sess, err := ensureSession(config)
+func NewPublisher(topic string) (pubsub.Publisher, error) {
+	sess, err := ensureSession()
 	if err != nil {
 		return nil, err
 	}

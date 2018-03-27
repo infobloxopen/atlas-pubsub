@@ -67,7 +67,7 @@ push: image
 	@docker push $(IMAGE_NAME)
 
 # Pushes the hello example images to docker
-push-example:
+push-example: image-example
 	@docker push $(IMAGE_NAME_PUB)
 	@docker push $(IMAGE_NAME_SUB)
 

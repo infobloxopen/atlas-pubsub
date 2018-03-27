@@ -20,6 +20,7 @@ var topic = flag.String("topic", hello.DefaultTopicName, "the topic to publish t
 
 func main() {
 	flag.Parse()
+	log.Printf("publishing hello world messages to %s with topic %q", *url, *topic)
 	conn, err := grpc.Dial(*url, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("failed to dial to grpc server: %v", err)
@@ -32,7 +33,10 @@ func main() {
 		msg := fmt.Sprintf("%s %s", g.Message, time.Now())
 		md := map[string]string{"language": g.Language}
 		log.Printf("publishing %q %v", msg, md)
-		p.Publish(context.Background(), []byte(msg), md)
+		if err := p.Publish(context.Background(), []byte(msg), md); err != nil {
+			log.Printf("error publishing: %v", err)
+			return
+		}
 		time.Sleep(time.Second)
 	}
 }

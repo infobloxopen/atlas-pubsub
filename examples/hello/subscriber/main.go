@@ -20,6 +20,7 @@ var languageFilter = flag.String("language", "", "if present, will only show mes
 
 func main() {
 	flag.Parse()
+	log.Printf("subscribing to server at %s with topic %q and subscriptionID %q", *url, *topic, *subscriptionID)
 	conn, err := grpc.Dial(*url, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("failed to dial to grpc server: %v", err)
@@ -42,9 +43,11 @@ func main() {
 			}
 			greeting := string(msg.Message())
 			log.Printf("received message: %q", greeting)
-			if err := msg.Ack(); err != nil {
-				log.Fatalf("failed to ack messageID %q: %v", msg.MessageID(), err)
-			}
+			go func() {
+				if err := msg.Ack(); err != nil {
+					log.Fatalf("failed to ack messageID %q: %v", msg.MessageID(), err)
+				}
+			}()
 		case err := <-e:
 			log.Printf("encountered error reading subscription: %v", err)
 		}

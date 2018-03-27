@@ -18,8 +18,8 @@ import (
 // the given topic with at-least-once message delivery semantics for the given
 // subscriptionID
 // TODO: info on permissions needed within the config to make this work
-func NewSubscriber(config *aws.Config, topic, subscriptionID string) (pubsub.Subscriber, error) {
-	sess, err := ensureSession(config)
+func NewSubscriber(topic, subscriptionID string) (pubsub.Subscriber, error) {
+	sess, err := ensureSession()
 	if err != nil {
 		return nil, err
 	}
@@ -147,6 +147,7 @@ func (s *awsSubscriber) ensureFilterPolicy(filter map[string]string) error {
 	if err != nil {
 		return err
 	}
+
 	currentFilterPolicy, err := decodeFilterPolicy(attrs.Attributes["FilterPolicy"])
 	if err != nil || !reflect.DeepEqual(currentFilterPolicy, filter) {
 		/*
