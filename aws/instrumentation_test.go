@@ -42,7 +42,6 @@ type mockSNS struct {
 	stubbedSetSubscriptionAttributesError error
 
 	spiedDeleteTopicInput   *sns.DeleteTopicInput
-	spiedDeleteTopicOutput  *sns.DeleteTopicOutput
 	stubbedDeleteTopicError error
 }
 
@@ -121,7 +120,6 @@ type mockSQS struct {
 	stubbedDeleteMessageError error
 
 	spiedDeleteQueueInput   *sqs.DeleteQueueInput
-	spiedDeleteQueueOutput  *sqs.DeleteQueueOutput
 	stubbedDeleteQueueError error
 }
 

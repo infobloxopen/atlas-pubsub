@@ -36,7 +36,6 @@ const topicNameMaxLength = 40 - len(topicNamePrefix)
 // VerifyPermissions checks if the aws config exists and checks if it has permissions to
 // create sns topics, send messages, create SQS topics, delete topics, and delete sqs queues
 func VerifyPermissions(cfg *aws.Config) error {
-	// Check if environment contains aws config
 	topic := fmt.Sprintf("verifyPermissions")
 	subscriptionID := uuid.New().String()
 
@@ -45,16 +44,16 @@ func VerifyPermissions(cfg *aws.Config) error {
 		return err
 	}
 
-	s, subErr := newSubscriber(sns.New(sess), sqs.New(sess), topic, subscriptionID)
-	if subErr != nil {
-		return subErr
+	subscriber, err := newSubscriber(sns.New(sess), sqs.New(sess), topic, subscriptionID)
+	if err != nil {
+		return err
 	}
 
-	publisher, pubErr := newPublisher(sns.New(sess), topic)
-	if pubErr != nil {
-		return pubErr
+	publisher, err := newPublisher(sns.New(sess), topic)
+	if err != nil {
+		return err
 	}
-	return verifyPermissions(s, publisher)
+	return verifyPermissions(subscriber, publisher)
 }
 
 // verifyPermissions checks if the aws config has correct permissions
@@ -67,12 +66,14 @@ func verifyPermissions(subscriber *awsSubscriber, publisher *publisher) error {
 
 	ctx, stop := context.WithTimeout(context.Background(), 1*time.Second)
 	defer stop()
-	c, e := subscriber.Start(ctx, nil)
 
-	testMessage := []byte("Permissions Verification Test Message. Id: " + uuid.New().String())
-	errSend := publisher.Publish(ctx, testMessage, nil)
-	if errSend != nil {
-		return errSend
+	// Filter for the correct subscription
+	md := map[string]string{"subscription": *subscriber.queueArn}
+	c, e := subscriber.Start(ctx, md)
+	testMessage := []byte("Permissions Verification Test Message. Subscription queue: " + *subscriber.queueArn)
+	err := publisher.Publish(ctx, testMessage, md)
+	if err != nil {
+		return err
 	}
 
 	select {
@@ -94,12 +95,12 @@ func verifyPermissions(subscriber *awsSubscriber, publisher *publisher) error {
 // ensureSession will handle creating a session with the passed-in config or a
 // default config if nil was passed in
 func ensureSession(cfg *aws.Config) (*session.Session, error) {
-	_, errConfig := cfg.Credentials.Get()
-	if errConfig != nil {
-		return nil, errConfig
-	}
 	if cfg == nil {
 		return session.NewSession(aws.NewConfig().WithCredentials(credentials.NewEnvCredentials()))
+	}
+	_, err := cfg.Credentials.Get()
+	if err != nil {
+		return nil, err
 	}
 	return session.NewSession(cfg)
 }

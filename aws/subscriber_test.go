@@ -189,30 +189,32 @@ func TestEnsureFilterPolicy_DifferentPolicy_SetsSubscriptionAttributes(t *testin
 // TestDeleteSubscription verifies that a sqs queue can be deleted successfully
 func TestDeleteSubscription(t *testing.T) {
 	sqsMock := mockSQS{}
-	s, serr := newSubscriber(&mockSNS{}, &sqsMock, "topic", "subscriptionID")
-	if serr != nil {
-		t.Errorf("expected no error from newSubscriber, but got: %v", serr)
+	s, err := newSubscriber(&mockSNS{}, &sqsMock, "topic", "subscriptionID")
+	if err != nil {
+		t.Errorf("expected no error from newSubscriber, but got: %v", err)
+		return
 	}
 
+	s.queueURL = aws.String("testurl")
 	sqsMock.stubbedDeleteQueueError = errors.New("test error")
-	expected := s.DeleteSubscription()
-	s.queueURL = aws.String("pubsub__topic-subscriptionID") // Set the Queue URL
-	sqsMock.spiedDeleteQueueInput = &sqs.DeleteQueueInput{QueueUrl: aws.String("pubsub__topic-subscriptionID")}
-	spiedInput := sqsMock.spiedDeleteQueueInput
+	actualErr := s.DeleteSubscription()
+	actualQueueURL := *sqsMock.spiedDeleteQueueInput.QueueUrl
 	expectedQueueURL := *s.queueURL
-	actualQueueURL := *spiedInput.QueueUrl
 
 	// verify that DeleteSubscription cathes errors
-	if expected != sqsMock.stubbedDeleteQueueError {
-		t.Errorf("expected error %v, but got %v", expected, sqsMock.stubbedDeleteQueueError)
-	} else if expectedQueueURL != actualQueueURL {
+	if actualErr != sqsMock.stubbedDeleteQueueError {
+		t.Errorf("expected error %v, but got %v", sqsMock.stubbedDeleteQueueError, actualErr)
+	}
+
+	// verify that the queueUrls match
+	if expectedQueueURL != actualQueueURL {
 		t.Errorf("AWS queue url was incorrect, expected: \"%s\", actual: \"%s\"", expectedQueueURL, actualQueueURL)
 	}
 
 	// verify that DeleteSubscription passes successfully
 	sqsMock.stubbedDeleteQueueError = nil
-	expectedPass := s.DeleteSubscription()
-	if expectedPass != nil {
-		t.Errorf("expected no error from DeleteSubscription, but got: %v", expectedPass)
+	actualErr = s.DeleteSubscription()
+	if actualErr != nil {
+		t.Errorf("expected no error from DeleteSubscription, but got: %v", actualErr)
 	}
 }
