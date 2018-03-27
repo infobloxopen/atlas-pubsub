@@ -8,7 +8,6 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sns/snsiface"
@@ -33,11 +32,8 @@ const topicNameMaxLength = 40 - len(topicNamePrefix)
 
 // ensureSession will handle creating a session with the passed-in config or a
 // default config if nil was passed in
-func ensureSession(cfg *aws.Config) (*session.Session, error) {
-	if cfg == nil {
-		return session.NewSession(aws.NewConfig().WithCredentials(credentials.NewEnvCredentials()))
-	}
-	return session.NewSession(cfg)
+func ensureSession() (*session.Session, error) {
+	return session.NewSession()
 }
 
 // buildAWSTopicName takes in a topic name and returns a formatted version fitting

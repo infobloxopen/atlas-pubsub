@@ -10,8 +10,6 @@ import (
 	"log"
 	"net"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	pubsub "github.com/infobloxopen/atlas-pubsub"
 	pubsubaws "github.com/infobloxopen/atlas-pubsub/aws"
 	pubsubgrpc "github.com/infobloxopen/atlas-pubsub/grpc"
@@ -21,31 +19,34 @@ import (
 var port = flag.String("p", "8080", "the port to listen to")
 
 func main() {
-	log.Println("starting aws pubsub server")
 	flag.Parse()
+	log.Printf("starting aws pubsub server on port %s", *port)
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", *port))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	grpcServer := grpc.NewServer()
 
-	cfg := aws.NewConfig().WithCredentials(credentials.NewEnvCredentials())
-	pubsubServer, err := newAWSPubSubServer(cfg)
+	pubsubServer, err := newAWSPubSubServer()
 	if err != nil {
 		log.Fatalf("failed to create aws pubsub server: %v", err)
 	}
 	pubsubgrpc.RegisterPubSubServer(grpcServer, pubsubServer)
-	grpcServer.Serve(lis)
+	if err := grpcServer.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
 }
 
 // newAWSPubSubServer creates a new grpc PubSub server using the broker
 // implementation for AWS
-func newAWSPubSubServer(config *aws.Config) (pubsubgrpc.PubSubServer, error) {
+func newAWSPubSubServer() (pubsubgrpc.PubSubServer, error) {
 	pubFactory := func(ctx context.Context, topic string) (pubsub.Publisher, error) {
-		return pubsubaws.NewPublisher(config, topic)
+		log.Printf("creating publisher for topic %q", topic)
+		return pubsubaws.NewPublisher(topic)
 	}
 	subFactory := func(ctx context.Context, topic, subscriptionID string) (pubsub.Subscriber, error) {
-		return pubsubaws.NewSubscriber(config, topic, subscriptionID)
+		log.Printf("creating subscriber for topic %q, subscriptionID %q", topic, subscriptionID)
+		return pubsubaws.NewSubscriber(topic, subscriptionID)
 	}
 	return pubsubgrpc.NewPubSubServer(pubFactory, subFactory, nil), nil
 }
