@@ -27,7 +27,7 @@ func NewSubscriber(topic, subscriptionID string) (pubsub.Subscriber, error) {
 	return newSubscriber(sns.New(sess), sqs.New(sess), topic, subscriptionID)
 }
 
-func newSubscriber(snsClient snsiface.SNSAPI, sqsClient sqsiface.SQSAPI, topic, subscriptionID string) (pubsub.Subscriber, error) {
+func newSubscriber(snsClient snsiface.SNSAPI, sqsClient sqsiface.SQSAPI, topic, subscriptionID string) (*awsSubscriber, error) {
 	subscriber := awsSubscriber{sns: snsClient, sqs: sqsClient}
 	err := subscriber.ensureSubscription(topic, subscriptionID)
 	if err != nil {
@@ -72,15 +72,22 @@ func (s *awsSubscriber) Start(ctx context.Context, filter map[string]string) (<-
 }
 
 func (s *awsSubscriber) AckMessage(ctx context.Context, messageID string) error {
-	_, error := s.sqs.DeleteMessage(&sqs.DeleteMessageInput{
+	_, err := s.sqs.DeleteMessage(&sqs.DeleteMessageInput{
 		QueueUrl:      s.queueURL,
 		ReceiptHandle: aws.String(messageID),
 	})
-	return error
+	return err
 }
 
 func (s *awsSubscriber) ExtendAckDeadline(ctx context.Context, messageID string, newDuration time.Duration) error {
 	panic("not implemented")
+}
+
+func (s *awsSubscriber) DeleteSubscription() error {
+	_, err := s.sqs.DeleteQueue(&sqs.DeleteQueueInput{
+		QueueUrl: s.queueURL,
+	})
+	return err
 }
 
 type awsMessage struct {

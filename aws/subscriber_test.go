@@ -185,3 +185,36 @@ func TestEnsureFilterPolicy_DifferentPolicy_SetsSubscriptionAttributes(t *testin
 		t.Error("expected SetSubscriptionAttributes to be called, but wasn't")
 	}
 }
+
+// TestDeleteSubscription verifies that a sqs queue can be deleted successfully
+func TestDeleteSubscription(t *testing.T) {
+	sqsMock := mockSQS{}
+	s, err := newSubscriber(&mockSNS{}, &sqsMock, "topic", "subscriptionID")
+	if err != nil {
+		t.Errorf("expected no error from newSubscriber, but got: %v", err)
+		return
+	}
+
+	s.queueURL = aws.String("testurl")
+	sqsMock.stubbedDeleteQueueError = errors.New("test error")
+	actualErr := s.DeleteSubscription()
+	actualQueueURL := *sqsMock.spiedDeleteQueueInput.QueueUrl
+	expectedQueueURL := *s.queueURL
+
+	// verify that DeleteSubscription cathes errors
+	if actualErr != sqsMock.stubbedDeleteQueueError {
+		t.Errorf("expected error %v, but got %v", sqsMock.stubbedDeleteQueueError, actualErr)
+	}
+
+	// verify that the queueUrls match
+	if expectedQueueURL != actualQueueURL {
+		t.Errorf("AWS queue url was incorrect, expected: \"%s\", actual: \"%s\"", expectedQueueURL, actualQueueURL)
+	}
+
+	// verify that DeleteSubscription passes successfully
+	sqsMock.stubbedDeleteQueueError = nil
+	actualErr = s.DeleteSubscription()
+	if actualErr != nil {
+		t.Errorf("expected no error from DeleteSubscription, but got: %v", actualErr)
+	}
+}

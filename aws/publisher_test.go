@@ -91,3 +91,36 @@ func TestPublish(t *testing.T) {
 		}
 	}
 }
+
+// TestDeleteTopic verifies that a sns topic can be deleted successfully with the DeleteTopic function
+func TestDeleteTopic(t *testing.T) {
+	snsMock := mockSNS{}
+	p, err := newPublisher(&snsMock, "foo")
+	if err != nil {
+		t.Errorf("expected no error from newPublisher, but got: %v", err)
+		return
+	}
+
+	snsMock.stubbedDeleteTopicError = errors.New("test error")
+	actualErr := p.DeleteTopic()
+	spiedInput := snsMock.spiedDeleteTopicInput
+	expectedTopicArn := p.topicArn
+	actualTopicArn := *spiedInput.TopicArn
+
+	// verify that DeleteTopic catches errors
+	if actualErr != snsMock.stubbedDeleteTopicError {
+		t.Errorf("expected error %v, but got %v", snsMock.stubbedDeleteTopicError, actualErr)
+	}
+
+	// verify that aws topic arn are correct
+	if expectedTopicArn != actualTopicArn {
+		t.Errorf("AWS topic arn was incorrect, expected: \"%s\", actual: \"%s\"", expectedTopicArn, actualTopicArn)
+	}
+
+	// verify that DeleteTopic passes successfully
+	snsMock.stubbedDeleteTopicError = nil
+	actualErr = p.DeleteTopic()
+	if actualErr != nil {
+		t.Errorf("expected no error from DeleteTopic, but got: %v", actualErr)
+	}
+}

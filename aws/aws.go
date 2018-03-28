@@ -1,10 +1,14 @@
 package aws
 
 import (
+	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -13,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sns/snsiface"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
+	"github.com/google/uuid"
 )
 
 // some arbitrary prefix I came up with to help distinguish between aws broker
@@ -27,6 +32,71 @@ const subscriptionIDMaxLength = 40
 // AWS SNS topic names can be up to 256 characters, but because of our naming
 // convention we're limited to the total 80-character max of the SQS name length.
 const topicNameMaxLength = 40 - len(topicNamePrefix)
+
+// VerifyPermissions checks if the aws config exists and checks if it has permissions to
+// create sns topics, send messages, create SQS topics, delete topics, and delete sqs queues
+func VerifyPermissions() error {
+	// Check if environment contains aws config
+	topic := "verifyPermissions"
+	subscriptionID := uuid.New().String()
+
+	sess, err := ensureSession()
+	if err != nil {
+		return err
+	}
+
+	log.Println("verify permissions: creating subscriber")
+	subscriber, err := newSubscriber(sns.New(sess), sqs.New(sess), topic, subscriptionID)
+	if err != nil {
+		return err
+	}
+
+	log.Println("verify permissions: creating publisher")
+	publisher, err := newPublisher(sns.New(sess), topic)
+	if err != nil {
+		return err
+	}
+	return verifyPermissions(subscriber, publisher)
+}
+
+// verifyPermissions checks if the aws config has correct permissions
+func verifyPermissions(subscriber *awsSubscriber, publisher *publisher) error {
+	defer func() {
+		// Delete publisher topic and subscriber queue
+		log.Println("verify permissions: deleting subscription")
+		subscriber.DeleteSubscription()
+	}()
+
+	ctx, stop := context.WithTimeout(context.Background(), 1*time.Second)
+	defer stop()
+
+	// Filter for the correct subscription
+	md := map[string]string{"subscription": *subscriber.queueArn}
+
+	log.Println("verify permissions: starting subscription")
+	c, e := subscriber.Start(ctx, md)
+	testMessage := []byte("Permissions Verification Test Message. Subscription queue: " + *subscriber.queueArn)
+
+	log.Println("verify permissions: publishing test message")
+	err := publisher.Publish(ctx, testMessage, md)
+	if err != nil {
+		return err
+	}
+
+	select {
+	case msg, isOpen := <-c:
+		if !isOpen {
+			return errors.New("error, channel closed prematurely")
+		}
+		if bytes.Equal(msg.Message(), testMessage) {
+			log.Println("verify permissions: success")
+			return nil
+		}
+		return errors.New("error, received the wrong message from publisher")
+	case err := <-e:
+		return err
+	}
+}
 
 // Utility functions for performing AWS commands (create SNS topic, SQS queue, etc)
 
