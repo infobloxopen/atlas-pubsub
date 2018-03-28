@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -36,7 +37,7 @@ const topicNameMaxLength = 40 - len(topicNamePrefix)
 // create sns topics, send messages, create SQS topics, delete topics, and delete sqs queues
 func VerifyPermissions() error {
 	// Check if environment contains aws config
-	topic := fmt.Sprintf("verifyPermissions")
+	topic := "verifyPermissions"
 	subscriptionID := uuid.New().String()
 
 	sess, err := ensureSession()
@@ -44,11 +45,13 @@ func VerifyPermissions() error {
 		return err
 	}
 
+	log.Println("verify permissions: creating subscriber")
 	subscriber, err := newSubscriber(sns.New(sess), sqs.New(sess), topic, subscriptionID)
 	if err != nil {
 		return err
 	}
 
+	log.Println("verify permissions: creating publisher")
 	publisher, err := newPublisher(sns.New(sess), topic)
 	if err != nil {
 		return err
@@ -60,7 +63,7 @@ func VerifyPermissions() error {
 func verifyPermissions(subscriber *awsSubscriber, publisher *publisher) error {
 	defer func() {
 		// Delete publisher topic and subscriber queue
-		publisher.DeleteTopic()
+		log.Println("verify permissions: deleting subscription")
 		subscriber.DeleteSubscription()
 	}()
 
@@ -69,8 +72,12 @@ func verifyPermissions(subscriber *awsSubscriber, publisher *publisher) error {
 
 	// Filter for the correct subscription
 	md := map[string]string{"subscription": *subscriber.queueArn}
+
+	log.Println("verify permissions: starting subscription")
 	c, e := subscriber.Start(ctx, md)
 	testMessage := []byte("Permissions Verification Test Message. Subscription queue: " + *subscriber.queueArn)
+
+	log.Println("verify permissions: publishing test message")
 	err := publisher.Publish(ctx, testMessage, md)
 	if err != nil {
 		return err
@@ -82,6 +89,7 @@ func verifyPermissions(subscriber *awsSubscriber, publisher *publisher) error {
 			return errors.New("error, channel closed prematurely")
 		}
 		if bytes.Equal(msg.Message(), testMessage) {
+			log.Println("verify permissions: success")
 			return nil
 		}
 		return errors.New("error, received the wrong message from publisher")

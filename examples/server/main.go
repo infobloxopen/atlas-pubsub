@@ -20,17 +20,20 @@ var port = flag.String("p", "8080", "the port to listen to")
 
 func main() {
 	flag.Parse()
+
+	// Checks to see if aws config credentials are valid
+	log.Print("checking server for AWS permissions")
+	if err := pubsubaws.VerifyPermissions(); err != nil {
+		log.Fatalf("AWS permissions check failed: %v", err)
+	}
+	log.Print("server has proper AWS permissions")
+
 	log.Printf("starting aws pubsub server on port %s", *port)
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", *port))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	grpcServer := grpc.NewServer()
-
-	// Checks to see if aws config credentials are valid
-	if err := pubsubaws.VerifyPermissions(); err != nil {
-		log.Fatalf("failed to validate aws config %v", err)
-	}
 
 	pubsubServer, err := newAWSPubSubServer()
 	if err != nil {
