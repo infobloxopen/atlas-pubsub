@@ -14,67 +14,61 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs"
 )
 
-func TestVerifyPermissions(t *testing.T) {
-	// Create publihser
+// setupVerifyPermissions sets up a publisher and subscriber and returns the mocks for further configuration.
+// When you're ready to exercise the verifyPermissions function, call the returned func
+func setupVerifyPermissions(t *testing.T) (*mockSNS, *mockSQS, func() error) {
+	queueArn := "testQueueArn"
 	snsMock := mockSNS{}
-	p, err := newPublisher(&snsMock, "topic")
-	if err != nil {
-		t.Errorf("expected no error from newPublisher, but got: %v", err)
-		return
-	}
-
-	// Create a subscriber
-	expectedMessage := []byte("Wrong message")
-	expectedHandle := "fooHandle"
-	expectedMetadata := map[string]string{"foo": "bar"}
 	sqsMock := mockSQS{
 		stubbedReceiveMessageMessages: []*sqs.Message{
-			mustWrapIntoSQSMessage(t, expectedMessage, aws.String(expectedHandle), expectedMetadata),
-			&sqs.Message{Body: aws.String("some message")},
+			mustWrapIntoSQSMessage(t, []byte(fmt.Sprintf("Permissions Verification Test Message. Subscription queue: %s", queueArn)), aws.String("testHandle"), nil),
 		},
+	}
+	p, err := newPublisher(&snsMock, "topic")
+	if err != nil {
+		t.Fatalf("expected no error from newPublisher, but got: %v", err)
 	}
 	s, err := newSubscriber(&snsMock, &sqsMock, "topic", "subscriptionID")
 	if err != nil {
-		t.Errorf("expected no error from newSubscriber, but got: %v", err)
-		return
+		t.Fatalf("expected no error from newSubscriber, but got: %v", err)
 	}
-	s.queueArn = aws.String("test-queue-arn")
+	s.queueArn = aws.String(queueArn)
 
-	// Test to see if publisher sends an error after running Publish code
-	snsMock.stubbedPublishError = errors.New("publish message error")
-	actual := verifyPermissions(s, p)
-	expected := snsMock.stubbedPublishError
-	if actual != expected {
-		t.Errorf("expected error %v, but got %v", expected, actual)
-	}
+	return &snsMock, &sqsMock, func() error { return verifyPermissions(s, p) }
+}
 
-	// Remove error and see if publish test passes
-	snsMock.stubbedPublishError = nil
-	metadata := map[string]string{"foo": "bar"}
-	message := encodeToSNSMessage([]byte("test"))
-	messageAttributes := encodeMessageAttributes(metadata)
-	snsMock.spiedPublishInput = &sns.PublishInput{
-		TopicArn:          aws.String(p.topicArn),
-		Message:           message,
-		MessageAttributes: messageAttributes,
+func TestVerifyPermissions(t *testing.T) {
+	{ // verify default setup passes
+		_, _, test := setupVerifyPermissions(t)
+		if err := test(); err != nil {
+			t.Errorf("expected default VerifyPermissions to pass, but got error %v", err)
+		}
 	}
-
-	// Test when sending a wrong message
-	expectedFail := ("error, received the wrong message from publisher")
-	actual = verifyPermissions(s, p)
-	if actual.Error() != expectedFail {
-		t.Errorf("expected error %v, but got %v", expectedFail, actual)
+	{ // verify any kind of publish error returns an error
+		snsMock, _, test := setupVerifyPermissions(t)
+		snsMock.stubbedPublishError = errors.New("test publish error")
+		actual := test()
+		if expected := snsMock.stubbedPublishError; expected != actual {
+			t.Errorf("expected %v, got %v", expected, actual)
+		}
 	}
-
-	// Test when sending a good message
-	expectedMessage = []byte("Permissions Verification Test Message. Subscription queue: " + *s.queueArn)
-	sqsMock.stubbedReceiveMessageMessages = []*sqs.Message{
-		mustWrapIntoSQSMessage(t, []byte(expectedMessage), aws.String(expectedHandle), expectedMetadata),
-		&sqs.Message{Body: aws.String("some message")},
+	{ // verify receiving the wrong message causes an error
+		_, sqsMock, test := setupVerifyPermissions(t)
+		sqsMock.stubbedReceiveMessageMessages = []*sqs.Message{
+			mustWrapIntoSQSMessage(t, []byte("the wrong message"), nil, nil),
+		}
+		if actual := test(); actual == nil {
+			t.Errorf("expected an error, but got nil")
+		}
 	}
-	actual = verifyPermissions(s, p)
-	if actual != nil {
-		t.Errorf("expected no error but got %v", actual)
+	{ // verify subscriber receiving error causes an error
+		_, sqsMock, test := setupVerifyPermissions(t)
+		sqsMock.stubbedReceiveMessageMessages = []*sqs.Message{
+			&sqs.Message{Body: aws.String("some malformed message")},
+		}
+		if actual := test(); actual == nil {
+			t.Errorf("expected an error, but got nil")
+		}
 	}
 }
 
