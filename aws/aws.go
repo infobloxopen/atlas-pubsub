@@ -35,15 +35,10 @@ const topicNameMaxLength = 40 - len(topicNamePrefix)
 
 // VerifyPermissions checks if the aws config exists and checks if it has permissions to
 // create sns topics, send messages, create SQS topics, delete topics, and delete sqs queues
-func VerifyPermissions() error {
+func VerifyPermissions(sess *session.Session) error {
 	// Check if environment contains aws config
 	topic := "verifyPermissions"
 	subscriptionID := uuid.New().String()
-
-	sess, err := ensureSession()
-	if err != nil {
-		return err
-	}
 
 	log.Println("verify permissions: creating subscriber")
 	subscriber, err := newSubscriber(sns.New(sess), sqs.New(sess), topic, subscriptionID)
@@ -99,12 +94,6 @@ func verifyPermissions(subscriber *awsSubscriber, publisher *publisher) error {
 }
 
 // Utility functions for performing AWS commands (create SNS topic, SQS queue, etc)
-
-// ensureSession will handle creating a session with the passed-in config or a
-// default config if nil was passed in
-func ensureSession() (*session.Session, error) {
-	return session.NewSession()
-}
 
 // buildAWSTopicName takes in a topic name and returns a formatted version fitting
 // this broker's naming convention. Errors will be returned if the topic name is
