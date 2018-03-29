@@ -70,6 +70,22 @@ func TestStart(t *testing.T) {
 				t.Error("expected Ack to return an error, but didn't")
 			}
 		}
+		{ // verify ExtendAckDeadline error is catching errors
+			// Pass a good value
+			sampleDuration := time.Duration(50) * time.Second
+			actual := msg.ExtendAckDeadline(sampleDuration)
+			if actual != nil {
+				t.Errorf("expected no error, but got %v", actual)
+			}
+			// Pass a bad value
+			sqsMock.stubbedChangeMessageVisibilityError = errors.New("The visibility timeout value is out of range. Values can be 0 to 43200 seconds")
+			sampleDuration = time.Duration(500000) * time.Second
+			actual = msg.ExtendAckDeadline(sampleDuration)
+			expected := sqsMock.stubbedChangeMessageVisibilityError
+			if actual.Error() != expected.Error() {
+				t.Errorf("expected error %v, but got %v", expected, actual)
+			}
+		}
 	}
 	{ // test an error message
 		err := <-errChannel
@@ -221,13 +237,8 @@ func TestDeleteSubscription(t *testing.T) {
 
 // TestExtendAckDeadline verifies that a messages visibility changes correctly
 func TestExtendAckDeadline(t *testing.T) {
-	expectedMessage := []byte("foo")
-	sqsMock := mockSQS{
-		stubbedReceiveMessageMessages: []*sqs.Message{
-			mustWrapIntoSQSMessage(t, expectedMessage, aws.String("testHandle"), nil),
-			&sqs.Message{Body: aws.String("testmessage")},
-		},
-	}
+	expectedMessage := "test-message"
+	sqsMock := mockSQS{}
 	s, err := newSubscriber(&mockSNS{}, &sqsMock, "topic", "subscriptionID")
 	if err != nil {
 		t.Errorf("expected no error from newSubscriber, but got: %v", err)
@@ -235,47 +246,44 @@ func TestExtendAckDeadline(t *testing.T) {
 	s.queueURL = aws.String("testurl")
 	ctx, stop := context.WithCancel(context.Background())
 	defer stop()
-	msgChannel, errChannel := s.Start(ctx, nil)
 
-	{ // test a successful message
-		msg := <-msgChannel
-		{ // verify ExtendAckDeadline error is catching errors
-			// Pass a good value
-			sampleDuration := time.Duration(50) * time.Second
-			actual := msg.ExtendAckDeadline(sampleDuration)
-			if actual != nil {
-				t.Errorf("expected no error, but got %v", actual)
-			}
-			// Check if parameter values (queueUrl, message) are the same
-			actualMessage := msg.Message()
-			if !bytes.Equal(expectedMessage, actualMessage) {
-				t.Errorf("expected %v, but got %v", expectedMessage, actualMessage)
-			}
-			actualQueueURL := *sqsMock.spiedChangeMessageVisibilityInput.QueueUrl
-			expectedQueueURL := *s.queueURL
-			if expectedQueueURL != actualQueueURL {
-				t.Errorf("expected %v, but got %v", expectedQueueURL, actualQueueURL)
-			}
-			// Pass a value above the range
-			sqsMock.stubbedChangeMessageVisibilityError = errors.New("The visibility timeout value is out of range. Values can be 0 to 43200 seconds")
-			sampleDuration = time.Duration(500000) * time.Second
-			actual = msg.ExtendAckDeadline(sampleDuration)
-			expected := sqsMock.stubbedChangeMessageVisibilityError
-			if actual.Error() != expected.Error() {
-				t.Errorf("expected error %v, but got %v", expected, actual)
-			}
-			// Pass a value below the range
-			sampleDuration = time.Duration(-10) * time.Second
-			actual = msg.ExtendAckDeadline(sampleDuration)
-			if actual.Error() != expected.Error() {
-				t.Errorf("expected error %v, but got %v", expected, actual)
-			}
-		}
+	// Pass a good value
+	timeLength := 50
+	sampleDuration := time.Duration(timeLength) * time.Second
+	actual := s.ExtendAckDeadline(ctx, expectedMessage, sampleDuration)
+	if actual != nil {
+		t.Errorf("expected no error, but got %v", actual)
 	}
-	{ // test an error message
-		err := <-errChannel
-		if err == nil {
-			t.Error("expected an error, but got nothing")
-		}
+
+	// Check if parameter values (queueUrl, message, VisibilityTimeout) are the same
+	actualMessage := *sqsMock.spiedChangeMessageVisibilityInput.ReceiptHandle
+	if expectedMessage != actualMessage {
+		t.Errorf("expected message %v, but got %v", expectedMessage, actualMessage)
+	}
+	actualQueueURL := *sqsMock.spiedChangeMessageVisibilityInput.QueueUrl
+	expectedQueueURL := *s.queueURL
+	if expectedQueueURL != actualQueueURL {
+		t.Errorf("expected %v, but got %v", expectedQueueURL, actualQueueURL)
+	}
+	actualTimeout := *sqsMock.spiedChangeMessageVisibilityInput.VisibilityTimeout
+	expectedTimeout := int64(timeLength)
+	if expectedTimeout != actualTimeout {
+		t.Errorf("expected %v, but got %v", expectedTimeout, actualTimeout)
+	}
+
+	// Pass a value above the range
+	sqsMock.stubbedChangeMessageVisibilityError = errors.New("The visibility timeout value is out of range. Values can be 0 to 43200 seconds")
+	sampleDuration = time.Duration(500000) * time.Second
+	actual = s.ExtendAckDeadline(ctx, expectedMessage, sampleDuration)
+	expected := sqsMock.stubbedChangeMessageVisibilityError
+	if actual.Error() != expected.Error() {
+		t.Errorf("expected error %v, but got %v", expected, actual)
+	}
+
+	// Pass a value below the range
+	sampleDuration = time.Duration(-10) * time.Second
+	actual = s.ExtendAckDeadline(ctx, expectedMessage, sampleDuration)
+	if actual.Error() != expected.Error() {
+		t.Errorf("expected error %v, but got %v", expected, actual)
 	}
 }
