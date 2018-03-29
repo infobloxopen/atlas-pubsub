@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sns/snsiface"
 	"github.com/aws/aws-sdk-go/service/sqs"
@@ -18,12 +19,7 @@ import (
 // the given topic with at-least-once message delivery semantics for the given
 // subscriptionID
 // TODO: info on permissions needed within the config to make this work
-func NewSubscriber(topic, subscriptionID string) (pubsub.Subscriber, error) {
-	sess, err := ensureSession()
-	if err != nil {
-		return nil, err
-	}
-
+func NewSubscriber(sess *session.Session, topic, subscriptionID string) (pubsub.Subscriber, error) {
 	return newSubscriber(sns.New(sess), sqs.New(sess), topic, subscriptionID)
 }
 

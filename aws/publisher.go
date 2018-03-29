@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sns/snsiface"
 	pubsub "github.com/infobloxopen/atlas-pubsub"
@@ -16,11 +17,7 @@ import (
 // Topic names must be made up of only uppercase and lowercase
 // ASCII letters, numbers, underscores, and hyphens, and must be between 1 and
 // 247 characters long.
-func NewPublisher(topic string) (pubsub.Publisher, error) {
-	sess, err := ensureSession()
-	if err != nil {
-		return nil, err
-	}
+func NewPublisher(sess *session.Session, topic string) (pubsub.Publisher, error) {
 	return newPublisher(sns.New(sess), topic)
 }
 
