@@ -15,6 +15,9 @@ import (
 	pubsub "github.com/infobloxopen/atlas-pubsub"
 )
 
+// ErrAckDeadlineOutOfRange is returned whenever an invalid duration is passed to ExtendAckDeadline
+var ErrAckDeadlineOutOfRange = errors.New("The visibility timeout value is out of range. Values can be 0 to 43200 seconds")
+
 // NewSubscriber creates an AWS message broker that will subscribe to
 // the given topic with at-least-once message delivery semantics for the given
 // subscriptionID
@@ -87,7 +90,7 @@ func (s *awsSubscriber) ExtendAckDeadline(ctx context.Context, messageID string,
 	// Change time.duration to int64
 	d := int64(newDuration.Seconds())
 	if d < 0 || d > 43200 {
-		return errors.New("The visibility timeout value is out of range. Values can be 0 to 43200 seconds")
+		return ErrAckDeadlineOutOfRange
 	}
 	_, err := s.sqs.ChangeMessageVisibility(&sqs.ChangeMessageVisibilityInput{
 		QueueUrl:          s.queueURL,
