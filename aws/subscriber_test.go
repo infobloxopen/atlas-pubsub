@@ -70,6 +70,20 @@ func TestStart(t *testing.T) {
 				t.Error("expected Ack to return an error, but didn't")
 			}
 		}
+		{ // verify ExtendAckDeadline error is catching errors
+			// Pass a good value
+			actual := msg.ExtendAckDeadline(time.Second)
+			if actual != nil {
+				t.Errorf("expected no error, but got %v", actual)
+			}
+			// Pass a bad value
+			sqsMock.stubbedChangeMessageVisibilityError = errors.New("test extend ack error")
+			actual = msg.ExtendAckDeadline(time.Second)
+			expected := sqsMock.stubbedChangeMessageVisibilityError
+			if actual != expected {
+				t.Errorf("expected error %v, but got %v", expected, actual)
+			}
+		}
 	}
 	{ // test an error message
 		err := <-errChannel
@@ -216,5 +230,58 @@ func TestDeleteSubscription(t *testing.T) {
 	actualErr = s.DeleteSubscription()
 	if actualErr != nil {
 		t.Errorf("expected no error from DeleteSubscription, but got: %v", actualErr)
+	}
+}
+
+// TestExtendAckDeadline verifies that a messages visibility changes correctly
+func TestExtendAckDeadline(t *testing.T) {
+	expectedMessageID := "test-message"
+	testCases := []struct {
+		Duration                  time.Duration
+		CallsAWS                  bool
+		ExpectedErr               error
+		ExpectedVisibilityTimeout int64
+	}{
+		{Duration: 5 * time.Minute, CallsAWS: true, ExpectedVisibilityTimeout: 300},
+		{Duration: -1 * time.Second, ExpectedErr: ErrAckDeadlineOutOfRange},
+		{Duration: 1000 * time.Minute, ExpectedErr: ErrAckDeadlineOutOfRange},
+		{ExpectedErr: errors.New("test stubbed error"), CallsAWS: true},
+	}
+	for _, tc := range testCases {
+		sqsMock := mockSQS{
+			stubbedChangeMessageVisibilityError: tc.ExpectedErr,
+		}
+		s, err := newSubscriber(&mockSNS{}, &sqsMock, "topic", "subscriptionID")
+		if err != nil {
+			t.Errorf("expected no error from newSubscriber, but got: %v", err)
+		}
+		s.queueURL = aws.String("testurl")
+
+		actualErr := s.ExtendAckDeadline(context.Background(), expectedMessageID, tc.Duration)
+		expectedErr := tc.ExpectedErr
+		if expectedErr != actualErr {
+			t.Errorf("expected error %v, but got %v", expectedErr, actualErr)
+		}
+		if sqsMock.spiedChangeMessageVisibilityInput == nil {
+			if tc.CallsAWS {
+				t.Errorf("expected call to AWS, but none was made")
+			}
+			continue
+		}
+		if !tc.CallsAWS {
+			t.Errorf("expected not to call AWS, but it was called")
+		}
+		actualMessageID := *sqsMock.spiedChangeMessageVisibilityInput.ReceiptHandle
+		if expectedMessageID != actualMessageID {
+			t.Errorf("expected MessageID to be %q, but was %q", expectedMessageID, actualMessageID)
+		}
+		actualVisibilityTimeout := *sqsMock.spiedChangeMessageVisibilityInput.VisibilityTimeout
+		if tc.ExpectedVisibilityTimeout != actualVisibilityTimeout {
+			t.Errorf("expected visibility timeout to be %d, but was %d", tc.ExpectedVisibilityTimeout, actualVisibilityTimeout)
+		}
+		actualQueueURL := *sqsMock.spiedChangeMessageVisibilityInput.QueueUrl
+		if *s.queueURL != actualQueueURL {
+			t.Errorf("expected queue URL to be %q, but was %q", *s.queueURL, actualQueueURL)
+		}
 	}
 }

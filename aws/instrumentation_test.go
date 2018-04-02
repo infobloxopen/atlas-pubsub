@@ -121,6 +121,9 @@ type mockSQS struct {
 
 	spiedDeleteQueueInput   *sqs.DeleteQueueInput
 	stubbedDeleteQueueError error
+
+	spiedChangeMessageVisibilityInput   *sqs.ChangeMessageVisibilityInput
+	stubbedChangeMessageVisibilityError error
 }
 
 func (mock *mockSQS) GetQueueUrl(input *sqs.GetQueueUrlInput) (*sqs.GetQueueUrlOutput, error) {
@@ -181,6 +184,11 @@ func (mock *mockSQS) DeleteMessage(input *sqs.DeleteMessageInput) (*sqs.DeleteMe
 func (mock *mockSQS) DeleteQueue(input *sqs.DeleteQueueInput) (*sqs.DeleteQueueOutput, error) {
 	mock.spiedDeleteQueueInput = input
 	return &sqs.DeleteQueueOutput{}, mock.stubbedDeleteQueueError
+}
+
+func (mock *mockSQS) ChangeMessageVisibility(input *sqs.ChangeMessageVisibilityInput) (*sqs.ChangeMessageVisibilityOutput, error) {
+	mock.spiedChangeMessageVisibilityInput = input
+	return &sqs.ChangeMessageVisibilityOutput{}, mock.stubbedChangeMessageVisibilityError
 }
 
 // mustWrapIntoSQSMessage panics if wrapIntoSQSMessage returns an error. This is

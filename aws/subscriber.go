@@ -2,6 +2,7 @@ package aws
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"sync"
 	"time"
@@ -14,6 +15,9 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	pubsub "github.com/infobloxopen/atlas-pubsub"
 )
+
+// ErrAckDeadlineOutOfRange is returned whenever an invalid duration is passed to ExtendAckDeadline
+var ErrAckDeadlineOutOfRange = errors.New("The visibility timeout value is out of range. Values can be 0 to 43200 seconds")
 
 // NewSubscriber creates an AWS message broker that will subscribe to
 // the given topic with at-least-once message delivery semantics for the given
@@ -75,8 +79,21 @@ func (s *awsSubscriber) AckMessage(ctx context.Context, messageID string) error 
 	return err
 }
 
+// Extend the message visibility.
+// newDuration: The new value for the message's visibility timeout.
+// Value needs to be 0 to 43200 seconds.
 func (s *awsSubscriber) ExtendAckDeadline(ctx context.Context, messageID string, newDuration time.Duration) error {
-	panic("not implemented")
+	// Change time.duration to int64
+	d := int64(newDuration.Seconds())
+	if d < 0 || d > 43200 {
+		return ErrAckDeadlineOutOfRange
+	}
+	_, err := s.sqs.ChangeMessageVisibility(&sqs.ChangeMessageVisibilityInput{
+		QueueUrl:          s.queueURL,
+		ReceiptHandle:     aws.String(messageID),
+		VisibilityTimeout: aws.Int64(d),
+	})
+	return err
 }
 
 func (s *awsSubscriber) DeleteSubscription() error {
@@ -103,8 +120,8 @@ func (m *awsMessage) Message() []byte {
 func (m *awsMessage) Metadata() map[string]string {
 	return m.metadata
 }
-func (m *awsMessage) ExtendAckDeadline(time.Duration) error {
-	panic("not implemented")
+func (m *awsMessage) ExtendAckDeadline(newDuration time.Duration) error {
+	return m.subscriber.ExtendAckDeadline(m.ctx, m.MessageID(), newDuration)
 }
 func (m *awsMessage) Ack() error {
 	return m.subscriber.AckMessage(m.ctx, m.MessageID())
