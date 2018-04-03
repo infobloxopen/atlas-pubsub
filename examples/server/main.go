@@ -54,12 +54,10 @@ func newAWSPubSubServer() (pubsubgrpc.PubSubServer, error) {
 	log.Print("server has proper AWS permissions")
 
 	pubFactory := func(ctx context.Context, topic string) (pubsub.Publisher, error) {
-		log.Printf("creating publisher for topic %q", topic)
 		return pubsubaws.NewPublisher(sess, topic)
 	}
 	subFactory := func(ctx context.Context, topic, subscriptionID string) (pubsub.Subscriber, error) {
-		log.Printf("creating subscriber for topic %q, subscriptionID %q", topic, subscriptionID)
 		return pubsubaws.NewSubscriber(sess, topic, subscriptionID)
 	}
-	return pubsubgrpc.NewPubSubServer(pubFactory, subFactory, nil), nil
+	return pubsubgrpc.NewPubSubServer(pubFactory, subFactory), nil
 }
