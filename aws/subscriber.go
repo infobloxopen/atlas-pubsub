@@ -3,6 +3,7 @@ package aws
 import (
 	"context"
 	"errors"
+	"log"
 	"reflect"
 	"sync"
 	"time"
@@ -28,7 +29,7 @@ func NewSubscriber(sess *session.Session, topic, subscriptionID string) (pubsub.
 }
 
 func newSubscriber(snsClient snsiface.SNSAPI, sqsClient sqsiface.SQSAPI, topic, subscriptionID string) (*awsSubscriber, error) {
-	subscriber := awsSubscriber{sns: snsClient, sqs: sqsClient}
+	subscriber := awsSubscriber{sns: snsClient, sqs: sqsClient, topic: topic, subscriptionID: subscriptionID}
 	err := subscriber.ensureSubscription(topic, subscriptionID)
 	if err != nil {
 		return nil, err
@@ -39,6 +40,9 @@ func newSubscriber(snsClient snsiface.SNSAPI, sqsClient sqsiface.SQSAPI, topic, 
 type awsSubscriber struct {
 	sns snsiface.SNSAPI
 	sqs sqsiface.SQSAPI
+
+	topic          string
+	subscriptionID string
 
 	queueURL        *string
 	queueArn        *string
@@ -72,6 +76,7 @@ func (s *awsSubscriber) Start(ctx context.Context, filter map[string]string) (<-
 }
 
 func (s *awsSubscriber) AckMessage(ctx context.Context, messageID string) error {
+	log.Printf("AWS: deleting message with id %q for queueURL %q", messageID, *s.queueURL)
 	_, err := s.sqs.DeleteMessage(&sqs.DeleteMessageInput{
 		QueueUrl:      s.queueURL,
 		ReceiptHandle: aws.String(messageID),
@@ -88,6 +93,7 @@ func (s *awsSubscriber) ExtendAckDeadline(ctx context.Context, messageID string,
 	if d < 0 || d > 43200 {
 		return ErrAckDeadlineOutOfRange
 	}
+	log.Printf("AWS: extending message visibility for id %q, queueURL %q to %d seconds", messageID, *s.queueURL, d)
 	_, err := s.sqs.ChangeMessageVisibility(&sqs.ChangeMessageVisibilityInput{
 		QueueUrl:          s.queueURL,
 		ReceiptHandle:     aws.String(messageID),
@@ -97,6 +103,7 @@ func (s *awsSubscriber) ExtendAckDeadline(ctx context.Context, messageID string,
 }
 
 func (s *awsSubscriber) DeleteSubscription() error {
+	log.Printf("AWS: deleting SQS queue %q", *s.queueURL)
 	_, err := s.sqs.DeleteQueue(&sqs.DeleteQueueInput{
 		QueueUrl: s.queueURL,
 	})
@@ -134,26 +141,33 @@ func (m *awsMessage) Ack() error {
 // * what if someone subscribes the same queue to a different SNS topic?
 // * other stuff?
 func (s *awsSubscriber) ensureSubscription(topic, subscriptionID string) error {
+	logStatus := func(step string) {
+		log.Printf("AWS: %s for topic %q, subID %q", step, topic, subscriptionID)
+	}
 	queueName, err := buildAWSQueueName(topic, subscriptionID)
 	if err != nil {
 		return err
 	}
 	// create the queue if needed
+	logStatus("ensuring queue exists")
 	s.queueURL, err = ensureQueue(queueName, s.sqs)
 	if err != nil {
 		return err
 	}
 	// create the topic if needed
+	logStatus("ensuring SNS topic exists")
 	s.topicArn, err = ensureTopic(topic, s.sns)
 	if err != nil {
 		return err
 	}
 	// set the queue policy to allow SNS
+	logStatus("ensuring queue policy is set")
 	err = ensureQueuePolicy(s.queueURL, s.topicArn, s.sqs)
 	if err != nil {
 		return err
 	}
 	// subscribe the queue to the topic
+	logStatus("ensuring SQS queue is subscribed to SNS topic")
 	s.queueArn, s.subscriptionArn, err = ensureQueueSubscription(s.queueURL, s.topicArn, s.sns, s.sqs)
 	if err != nil {
 		return err
@@ -170,11 +184,13 @@ func (s *awsSubscriber) ensureFilterPolicy(filter map[string]string) error {
 
 	currentFilterPolicy, err := decodeFilterPolicy(attrs.Attributes["FilterPolicy"])
 	if err != nil || !reflect.DeepEqual(currentFilterPolicy, filter) {
+		log.Printf("AWS: filter policy changed for topic %q, subID %q. old: %v, new: %v", s.topic, s.subscriptionID, currentFilterPolicy, filter)
 		/*
 		   If the new filter is empty, we need to delete the subscription and recreate it.
 		   This is needed because the AWS API won't allow you to set an empty FilterPolicy
 		*/
 		if len(filter) == 0 {
+			log.Printf("AWS: clearing filter policy for topic %q, subID %q", s.topic, s.subscriptionID)
 			if _, err := s.sns.Unsubscribe(&sns.UnsubscribeInput{
 				SubscriptionArn: s.subscriptionArn,
 			}); err != nil {
@@ -196,6 +212,7 @@ func (s *awsSubscriber) ensureFilterPolicy(filter map[string]string) error {
 		if err != nil {
 			return err
 		}
+		log.Printf("AWS: modifying filter policy for topic %q, subID %q", s.topic, s.subscriptionID)
 		if _, ssaErr := s.sns.SetSubscriptionAttributes(&sns.SetSubscriptionAttributesInput{
 			SubscriptionArn: s.subscriptionArn,
 			AttributeName:   aws.String("FilterPolicy"),
@@ -222,7 +239,6 @@ func (s *awsSubscriber) pull(ctx context.Context, channel chan pubsub.Message, e
 	}
 	for _, msg := range resp.Messages {
 		message, err := decodeFromSQSMessage(msg.Body)
-		metadata := decodeMessageAttributes(msg.MessageAttributes)
 		if err != nil {
 			errChannel <- err
 			continue
@@ -232,7 +248,7 @@ func (s *awsSubscriber) pull(ctx context.Context, channel chan pubsub.Message, e
 			subscriber: s,
 			messageID:  *msg.ReceiptHandle,
 			message:    message,
-			metadata:   metadata,
+			metadata:   decodeMessageAttributes(msg.MessageAttributes),
 		}
 	}
 }

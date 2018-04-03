@@ -130,7 +130,7 @@ func (mock *mockSQS) GetQueueUrl(input *sqs.GetQueueUrlInput) (*sqs.GetQueueUrlO
 	mock.spiedGetQueueURLInput = input
 	output := mock.stubbedGetQueueURLOutput
 	if output == nil && mock.stubbedGetQueueURLError == nil {
-		output = &sqs.GetQueueUrlOutput{}
+		output = &sqs.GetQueueUrlOutput{QueueUrl: aws.String("default fake queue url")}
 	}
 
 	return output, mock.stubbedGetQueueURLError

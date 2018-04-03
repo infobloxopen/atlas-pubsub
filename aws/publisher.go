@@ -2,6 +2,7 @@ package aws
 
 import (
 	"context"
+	"log"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -22,6 +23,7 @@ func NewPublisher(sess *session.Session, topic string) (pubsub.Publisher, error)
 }
 
 func newPublisher(snsClient snsiface.SNSAPI, topic string) (*publisher, error) {
+	log.Printf("AWS: ensuring SNS topic exists for %q", topic)
 	topicArn, err := ensureTopic(topic, snsClient)
 	if err != nil {
 		return nil, err

@@ -81,13 +81,13 @@ func verifyPermissions(subscriber *awsSubscriber, publisher *publisher) error {
 	select {
 	case msg, isOpen := <-c:
 		if !isOpen {
-			return errors.New("error, channel closed prematurely")
+			return errors.New("channel closed prematurely")
 		}
 		if bytes.Equal(msg.Message(), testMessage) {
 			log.Println("verify permissions: success")
 			return nil
 		}
-		return errors.New("error, received the wrong message from publisher")
+		return errors.New("received the wrong message from publisher")
 	case err := <-e:
 		return err
 	}
@@ -143,7 +143,6 @@ func ensureTopic(topic string, snsClient snsiface.SNSAPI) (*string, error) {
 	if nameErr != nil {
 		return nil, nameErr
 	}
-
 	topicResp, topicErr := snsClient.CreateTopic(&sns.CreateTopicInput{Name: scrubbedTopic})
 	if topicErr != nil {
 		return nil, topicErr
@@ -160,6 +159,7 @@ func ensureQueue(queueName *string, sqsClient sqsiface.SQSAPI) (*string, error) 
 		return queueURLResp.QueueUrl, nil
 	}
 	if awsErr, ok := queueURLErr.(awserr.Error); ok && awsErr.Code() == sqs.ErrCodeQueueDoesNotExist {
+		log.Printf("AWS: creating queue: %q", *queueName)
 		createResp, createErr := sqsClient.CreateQueue(&sqs.CreateQueueInput{
 			QueueName: queueName,
 		})

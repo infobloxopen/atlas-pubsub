@@ -22,42 +22,42 @@ type ErrorHandler func(error)
 
 // NewPubSubServer returns an implementation of PubSubServer by consuming a
 // pubsub.Publisher and pubsub.OnceSubscriber implementation
-func NewPubSubServer(publisherFactory PublisherFactory, subscriberFactory SubscriberFactory, errorHandler ErrorHandler) PubSubServer {
-	if errorHandler == nil {
-		errorHandler = func(err error) { log.Print(err) }
-	}
-
-	return &grpcWrapper{publisherFactory, subscriberFactory, errorHandler}
+func NewPubSubServer(publisherFactory PublisherFactory, subscriberFactory SubscriberFactory) PubSubServer {
+	return &grpcWrapper{publisherFactory, subscriberFactory}
 }
 
 type grpcWrapper struct {
 	publisherFactory  PublisherFactory
 	subscriberFactory SubscriberFactory
-	errorHandler      ErrorHandler
 }
 
 func (s *grpcWrapper) Publish(ctx context.Context, req *PublishRequest) (*PublishResponse, error) {
-	p, perr := s.publisherFactory(ctx, req.GetTopic())
-	if perr != nil {
-		return nil, perr
+	p, err := s.publisherFactory(ctx, req.GetTopic())
+	if err != nil {
+		log.Printf("GRPC: error initializing publisher for topic %q: %v", req.GetTopic(), err)
+		return nil, err
 	}
 
 	if err := p.Publish(ctx, req.GetMessage(), req.GetMetadata()); err != nil {
+		log.Printf("GRPC: error publishing to topic %q: %v", req.GetTopic(), err)
 		return nil, err
 	}
+
+	log.Printf("GRPC: published to topic %q", req.GetTopic())
 	return &PublishResponse{}, nil
 }
 
 func (s *grpcWrapper) Subscribe(req *SubscribeRequest, srv PubSub_SubscribeServer) error {
-	log.Printf("starting subscription for %v", req)
-	subscriber, serr := s.subscriberFactory(context.Background(), req.GetTopic(), req.GetSubscriptionId())
-	if serr != nil {
-		return serr
+	subscriber, err := s.subscriberFactory(context.Background(), req.GetTopic(), req.GetSubscriptionId())
+	if err != nil {
+		log.Printf("GRPC: error initializing subscriber for topic %q, subID %q: %v", req.GetTopic(), req.GetSubscriptionId(), err)
+		return err
 	}
 
 	ctx, cancel := context.WithCancel(srv.Context())
 	defer cancel()
 	c, e := subscriber.Start(ctx, req.GetFilter())
+	log.Printf("GRPC: starting subscription for topic %q, subID %q, filter %v", req.GetTopic(), req.GetSubscriptionId(), req.GetFilter())
 	for {
 		select {
 		case <-srv.Context().Done():
@@ -70,19 +70,26 @@ func (s *grpcWrapper) Subscribe(req *SubscribeRequest, srv PubSub_SubscribeServe
 				MessageId: msg.MessageID(),
 				Message:   msg.Message(),
 			}); err != nil {
-				s.errorHandler(err)
+				log.Printf("GRPC: error serving message for topic %q, subID %q: %v", req.GetTopic(), req.GetSubscriptionId(), err)
+				return err
 			}
 		case err := <-e:
-			s.errorHandler(err)
+			log.Printf("GRPC: general error received for topic %q, subID %q: %v", req.GetTopic(), req.GetSubscriptionId(), err)
+			return err
 		}
 	}
 }
 
 func (s *grpcWrapper) Ack(ctx context.Context, req *AckRequest) (*AckResponse, error) {
-	subscriber, serr := s.subscriberFactory(ctx, req.GetTopic(), req.GetSubscriptionId())
-	if serr != nil {
-		return nil, serr
+	subscriber, err := s.subscriberFactory(ctx, req.GetTopic(), req.GetSubscriptionId())
+	if err != nil {
+		log.Printf("GRPC: error acking message for topic %q, subID %q, messageID %q: %v", req.GetTopic(), req.GetSubscriptionId(), req.GetMessageId(), err)
+		return nil, err
 	}
-
-	return &AckResponse{}, subscriber.AckMessage(ctx, req.GetMessageId())
+	log.Printf("GRPC: acking message for topic %q, subID %q, messageID %q", req.GetTopic(), req.GetSubscriptionId(), req.GetMessageId())
+	err = subscriber.AckMessage(ctx, req.GetMessageId())
+	if err != nil {
+		log.Printf("GRPC: error acking message for topic %q, subID %q, messageID %q: %v", req.GetTopic(), req.GetSubscriptionId(), req.GetMessageId(), err)
+	}
+	return &AckResponse{}, err
 }

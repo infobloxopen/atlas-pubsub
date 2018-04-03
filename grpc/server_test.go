@@ -35,7 +35,7 @@ func mockPublisherFactory(mock *mockPublisher) PublisherFactory {
 
 func TestServerPublish(t *testing.T) {
 	mock := &mockPublisher{}
-	server := NewPubSubServer(mockPublisherFactory(mock), nil, nil)
+	server := NewPubSubServer(mockPublisherFactory(mock), nil)
 	publishRequest := &PublishRequest{
 		Topic:    "testTopic",
 		Message:  []byte{1, 2, 3, 4, 5},
@@ -155,26 +155,31 @@ func (m mockMessage) Metadata() map[string]string           { return m.metadata 
 func (m mockMessage) ExtendAckDeadline(time.Duration) error { return nil }
 func (m mockMessage) Ack() error                            { return nil }
 
-func TestSubscribe(t *testing.T) {
-	var errorHandlerError error
-	mock := &mockSubscriber{}
-	mockSubscribe := &mockSubscribeServer{}
-	server := NewPubSubServer(nil, mockSubscriberFactory(mock), func(err error) { errorHandlerError = err })
+func setupServerForSubscribeTest() (*SubscribeRequest, *mockSubscriber, *mockSubscribeServer, func() error) {
+	mock := &mockSubscriber{
+		stubbedStartMessageChannel: make(chan pubsub.Message),
+		stubbedStartErrorChannel:   make(chan error),
+	}
+	mockSubscribe := &mockSubscribeServer{stubbedContext: context.Background()}
+	server := NewPubSubServer(nil, mockSubscriberFactory(mock))
 	subscribeRequest := &SubscribeRequest{
 		Topic:          "testTopic",
 		SubscriptionId: "testSubscriptionID",
 		Filter:         map[string]string{"foo": "bar"},
 	}
 
-	{ // verify an error in constructor propagates through Start
-		expectedErr := errors.New("test subscribe constructor error")
-		mock.stubbedConstructorError = expectedErr
-		actualErr := server.Subscribe(subscribeRequest, mockSubscribe)
-		if expectedErr != actualErr {
-			t.Errorf("constructor error was incorrect:\nexpected: %v\nactual: %v", expectedErr, actualErr)
-		}
-		mock.stubbedConstructorError = nil
-	}
+	return subscribeRequest, mock, mockSubscribe, func() error { return server.Subscribe(subscribeRequest, mockSubscribe) }
+}
+
+func TestServerSubscribe_MainCase(t *testing.T) {
+	subscribeRequest, mock, mockSubscribe, test := setupServerForSubscribeTest()
+	done := make(chan bool)
+
+	go func() {
+		test()
+		done <- true
+	}()
+	time.Sleep(10 * time.Millisecond)
 	{ // verify topic name passed through successfully
 		expectedTopic := subscribeRequest.GetTopic()
 		actualTopic := mock.spiedConstructorTopicName
@@ -189,88 +194,86 @@ func TestSubscribe(t *testing.T) {
 			t.Errorf("expected subscriptionID to be %q, but was %q", expectedSubID, actualSubID)
 		}
 	}
-	{
-		mock.stubbedStartMessageChannel = make(chan pubsub.Message)
-		mock.stubbedStartErrorChannel = make(chan error)
-		mockSubscribe.stubbedContext = context.Background()
-		done := make(chan bool)
-		go func() {
-			server.Subscribe(subscribeRequest, mockSubscribe)
-			done <- true
-		}()
-		time.Sleep(10 * time.Millisecond)
-		{ // verify filter passed through successfully
-			expectedFilter := subscribeRequest.GetFilter()
-			actualFilter := mock.spiedStartFilter
-			if !reflect.DeepEqual(expectedFilter, actualFilter) {
-				t.Errorf("expected filter to be %v, but was %v", expectedFilter, actualFilter)
-			}
-		}
-		{ // verify a message sent through a channel gets sent through PubSub_SubscribeServer
-			expectedMessageID := "test messageID"
-			expectedMessage := []byte{1, 2, 3, 4}
-			mock.stubbedStartMessageChannel <- mockMessage{
-				messageID: expectedMessageID,
-				message:   expectedMessage,
-			}
-			time.Sleep(10 * time.Millisecond)
-			actualMessageID := mockSubscribe.spiedSendMessageID
-			actualMessage := mockSubscribe.spiedSendMessage
-
-			if expectedMessageID != actualMessageID {
-				t.Errorf("expected messageID %q, but got %q", expectedMessageID, actualMessageID)
-			}
-			if !bytes.Equal(expectedMessage, actualMessage) {
-				t.Errorf("expected message %v, but got %v", expectedMessage, actualMessage)
-			}
-		}
-		{ // verify errors passed through error channel get handled
-			expectedErr := errors.New("test error channel error")
-			mock.stubbedStartErrorChannel <- expectedErr
-			time.Sleep(10 * time.Millisecond)
-			if errorHandlerError != expectedErr {
-				t.Errorf("unexpected error channel error:\nexpected: %v\nactual: %v", expectedErr, errorHandlerError)
-			}
-			errorHandlerError = nil
-		}
-		{ // verify a send error propagates to the error handler
-			expectedErr := errors.New("test send error")
-			mockSubscribe.stubbedSendError = expectedErr
-			mock.stubbedStartMessageChannel <- mockMessage{}
-			time.Sleep(100 * time.Millisecond)
-			if expectedErr != errorHandlerError {
-				t.Errorf("unexpected send error:\nexpected: %v\nactual: %v", expectedErr, errorHandlerError)
-			}
-			errorHandlerError = nil
-			mockSubscribe.stubbedSendError = nil
-		}
-		{ // verify Subscribe terminates when the subscriber channel closes
-			close(mock.stubbedStartMessageChannel)
-			if terminated := <-done; !terminated {
-				t.Error("expected subscribe to terminate when channel closed, but didn't")
-			}
+	{ // verify filter passed through successfully
+		expectedFilter := subscribeRequest.GetFilter()
+		actualFilter := mock.spiedStartFilter
+		if !reflect.DeepEqual(expectedFilter, actualFilter) {
+			t.Errorf("expected filter to be %v, but was %v", expectedFilter, actualFilter)
 		}
 	}
-	{ // verify Subscribe terminates when the context is cancelled
-		mock.stubbedStartMessageChannel = make(chan pubsub.Message)
-		var cancel context.CancelFunc
-		mockSubscribe.stubbedContext, cancel = context.WithCancel(context.Background())
-		done := make(chan bool)
-		go func() {
-			server.Subscribe(subscribeRequest, mockSubscribe)
-			done <- true
-		}()
-		time.Sleep(10 * time.Millisecond)
-		cancel()
-		if terminated := <-done; !terminated {
-			t.Error("expected subscribe to terminate when context was cancelled, but didn't")
+	{ // verify a message sent through a channel gets sent through PubSub_SubscribeServer
+		expectedMessageID := "test messageID"
+		expectedMessage := []byte{1, 2, 3, 4}
+		mock.stubbedStartMessageChannel <- mockMessage{
+			messageID: expectedMessageID,
+			message:   expectedMessage,
 		}
+		time.Sleep(10 * time.Millisecond)
+		actualMessageID := mockSubscribe.spiedSendMessageID
+		actualMessage := mockSubscribe.spiedSendMessage
+
+		if expectedMessageID != actualMessageID {
+			t.Errorf("expected messageID %q, but got %q", expectedMessageID, actualMessageID)
+		}
+		if !bytes.Equal(expectedMessage, actualMessage) {
+			t.Errorf("expected message %v, but got %v", expectedMessage, actualMessage)
+		}
+	}
+	{ // verify Subscribe terminates when the subscriber channel closes
+		close(mock.stubbedStartMessageChannel)
+		if terminated := <-done; !terminated {
+			t.Error("expected subscribe to terminate when channel closed, but didn't")
+		}
+	}
+}
+
+func TestServerSubscribe_ContextDone_TerminatesStream(t *testing.T) {
+	_, _, mockSubscribe, test := setupServerForSubscribeTest()
+	var cancel context.CancelFunc
+	mockSubscribe.stubbedContext, cancel = context.WithCancel(context.Background())
+	cancel()
+	if err := test(); err != nil {
+		t.Errorf("didn't expect error, but got %v", err)
+	}
+}
+
+func TestServerSubscribe_FactoryError_TerminatesStream(t *testing.T) {
+	_, mock, _, test := setupServerForSubscribeTest()
+
+	expectedErr := errors.New("test subscribe constructor error")
+	mock.stubbedConstructorError = expectedErr
+	actualErr := test()
+	if expectedErr != actualErr {
+		t.Errorf("constructor error was incorrect:\nexpected: %v\nactual: %v", expectedErr, actualErr)
+	}
+}
+
+func TestServerSubscribe_SendError_TerminatesStream(t *testing.T) {
+	_, mock, mockSubscribe, test := setupServerForSubscribeTest()
+
+	expectedErr := errors.New("test send error")
+	mockSubscribe.stubbedSendError = expectedErr
+	go func() { mock.stubbedStartMessageChannel <- mockMessage{} }()
+	actualErr := test()
+	if expectedErr != actualErr {
+		t.Errorf("unexpected send error:\nexpected: %v\nactual: %v", expectedErr, actualErr)
+	}
+}
+
+func TestServerSubscribe_ChannelError(t *testing.T) {
+	_, mock, _, test := setupServerForSubscribeTest()
+
+	expectedErr := errors.New("test error channel error")
+	go func() { mock.stubbedStartErrorChannel <- expectedErr }()
+	actualErr := test()
+	if actualErr != expectedErr {
+		t.Errorf("unexpected error channel error:\nexpected: %v\nactual: %v", expectedErr, actualErr)
 	}
 }
 
 func TestServerAck(t *testing.T) {
 	mock := &mockSubscriber{}
-	server := NewPubSubServer(nil, mockSubscriberFactory(mock), nil)
+	server := NewPubSubServer(nil, mockSubscriberFactory(mock))
 	ackRequest := &AckRequest{
 		Topic:          "testTopic",
 		SubscriptionId: "testSubID",
