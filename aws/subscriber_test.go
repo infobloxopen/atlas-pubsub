@@ -135,21 +135,53 @@ func TestStart_FilterPolicyError_ClosesMessageChannel(t *testing.T) {
 	}
 }
 
+func TestFilterPoliciesEqual(t *testing.T) {
+	testCases := []struct {
+		l, r     map[string]string
+		expected bool
+	}{
+		{nil, nil, true},
+		{make(map[string]string), nil, true},
+		{make(map[string]string), make(map[string]string), true},
+		{map[string]string{"foo": "bar"}, map[string]string{"foo": "bar"}, true},
+		{map[string]string{"foo": "bar"}, map[string]string{"foo": "baz"}, false},
+		{map[string]string{"foo": "bar"}, map[string]string{}, false},
+		{map[string]string{"foo": "bar"}, map[string]string{"foo": "bar", "baz": "qux"}, false},
+	}
+
+	for _, tc := range testCases {
+		if actual := filterPoliciesEqual(tc.l, tc.r); tc.expected != actual {
+			t.Errorf("expected '%v' for %v, %v, but was '%v'", tc.expected, tc.l, tc.r, actual)
+		}
+	}
+}
+
 // verify that no calls to update the subscription happens if the passed-in filter matches the existing filter
 func TestEnsureFilterPolicy_NewFilterMatches_NoModificationDone(t *testing.T) {
-	filterPolicy := map[string]string{"foo": "bar"}
-	snsMock := &mockSNS{
-		stubbedGetSubscriptionAttributesOutput: &sns.GetSubscriptionAttributesOutput{Attributes: map[string]*string{"FilterPolicy": mustEncodeFilterPolicy(t, filterPolicy)}},
+	testCases := []struct {
+		existing map[string]string
+		new      map[string]string
+	}{
+		{map[string]string{"foo": "bar"}, map[string]string{"foo": "bar"}},
+		{make(map[string]string), make(map[string]string)},
+		{make(map[string]string), nil},
+		{nil, make(map[string]string)},
+		{nil, nil},
 	}
-	subscriber := awsSubscriber{
-		sns: snsMock,
-	}
-	subscriber.ensureFilterPolicy(filterPolicy)
-	if snsMock.spiedSubscribeInput != nil {
-		t.Error("sns.Subscribe was called, but shouldn't have been")
-	}
-	if snsMock.spiedSetSubscriptionAttributesInput != nil {
-		t.Error("sns.SetSubscriptionAttributes was called, but shouldn't have been")
+	for _, tc := range testCases {
+		snsMock := &mockSNS{
+			stubbedGetSubscriptionAttributesOutput: &sns.GetSubscriptionAttributesOutput{Attributes: map[string]*string{"FilterPolicy": mustEncodeFilterPolicy(t, tc.existing)}},
+		}
+		subscriber := awsSubscriber{
+			sns: snsMock,
+		}
+		subscriber.ensureFilterPolicy(tc.new)
+		if snsMock.spiedSubscribeInput != nil {
+			t.Error("sns.Subscribe was called, but shouldn't have been")
+		}
+		if snsMock.spiedSetSubscriptionAttributesInput != nil {
+			t.Error("sns.SetSubscriptionAttributes was called, but shouldn't have been")
+		}
 	}
 }
 

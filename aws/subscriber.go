@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log"
-	"reflect"
 	"sync"
 	"time"
 
@@ -176,6 +175,23 @@ func (s *awsSubscriber) ensureSubscription(topic, subscriptionID string) error {
 	return nil
 }
 
+// filterPoliciesEqual will verify that both maps are equal as far as filter policies
+// are concerned. This differs from using reflect.DeepEqual in that a nil map will
+// compare equally to an empty map
+func filterPoliciesEqual(l, r map[string]string) bool {
+	if len(l) != len(r) {
+		return false
+	}
+	for k, vl := range l {
+		if vr, ok := r[k]; !ok || vl != vr {
+			return false
+		}
+	}
+	return true
+}
+
+// ensureFilterPolicy will verify that the passed-in policy matches the existing
+// policy and, if not, the existing policy gets updated
 func (s *awsSubscriber) ensureFilterPolicy(filter map[string]string) error {
 	attrs, err := s.sns.GetSubscriptionAttributes(&sns.GetSubscriptionAttributesInput{SubscriptionArn: s.subscriptionArn})
 	if err != nil {
@@ -183,7 +199,7 @@ func (s *awsSubscriber) ensureFilterPolicy(filter map[string]string) error {
 	}
 
 	currentFilterPolicy, err := decodeFilterPolicy(attrs.Attributes["FilterPolicy"])
-	if err != nil || !reflect.DeepEqual(currentFilterPolicy, filter) {
+	if err != nil || !filterPoliciesEqual(currentFilterPolicy, filter) {
 		log.Printf("AWS: filter policy changed for topic %q, subID %q. old: %v, new: %v", s.topic, s.subscriptionID, currentFilterPolicy, filter)
 		/*
 		   If the new filter is empty, we need to delete the subscription and recreate it.
