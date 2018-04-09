@@ -17,7 +17,7 @@ type Publisher interface {
 // once message delivery semantics
 type Subscriber interface {
 	// Start creates a channel to the message broker for receiving messages
-	Start(ctx context.Context, filter map[string]string) (<-chan Message, <-chan error)
+	Start(ctx context.Context, options ...Option) (<-chan Message, <-chan error)
 	// AckMessage will delete the given message from its respective message queue
 	AckMessage(ctx context.Context, messageID string) error
 	// ExtendAckDeadline will postpone resending the given in-flight message for

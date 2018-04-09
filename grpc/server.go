@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"log"
+	"time"
 
 	"golang.org/x/net/context"
 
@@ -56,7 +57,11 @@ func (s *grpcWrapper) Subscribe(req *SubscribeRequest, srv PubSub_SubscribeServe
 
 	ctx, cancel := context.WithCancel(srv.Context())
 	defer cancel()
-	c, e := subscriber.Start(ctx, req.GetFilter())
+
+	// Change int64 to time.Duration
+	retentionPeriod := time.Duration(req.GetRetentionPeriod()) * time.Second
+	visibilityTimeout := time.Duration(req.GetVisibilityTimeout()) * time.Second
+	c, e := subscriber.Start(ctx, pubsub.VisibilityTimeout(visibilityTimeout), pubsub.RetentionPeriod(retentionPeriod), pubsub.Filter(req.GetFilter()))
 	log.Printf("GRPC: starting subscription for topic %q, subID %q, filter %v", req.GetTopic(), req.GetSubscriptionId(), req.GetFilter())
 	for {
 		select {

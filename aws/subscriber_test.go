@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sqs"
+	pubsub "github.com/infobloxopen/atlas-pubsub"
 )
 
 // TestStart will run through a single successful message and then one mangled message
@@ -33,7 +34,8 @@ func TestStart(t *testing.T) {
 	}
 	ctx, stop := context.WithCancel(context.Background())
 	defer stop()
-	msgChannel, errChannel := s.Start(ctx, nil)
+
+	msgChannel, errChannel := s.Start(ctx)
 
 	{ // test a successful message
 		msg := <-msgChannel
@@ -117,7 +119,7 @@ func TestStart_FilterPolicyError_ClosesMessageChannel(t *testing.T) {
 
 	snsMock.stubbedSetSubscriptionAttributesError = errors.New("test ensureFilterPolicy error")
 
-	msgChannel, errChannel := s.Start(context.Background(), map[string]string{"foo": "bar"})
+	msgChannel, errChannel := s.Start(context.Background(), pubsub.Filter(map[string]string{"foo": "bar"}))
 	time.Sleep(10 * time.Millisecond)
 
 	{
