@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -171,6 +173,92 @@ func TestEnsureQueuePolicy(t *testing.T) {
 		actualErr := ensureQueuePolicy(queueURL, topicArn, &sqsSpy)
 		if actualErr != expectedErr {
 			t.Errorf("expected sqs.SetQueueAttributes to return error :\n%v\nbut was:\n%v", expectedErr, actualErr)
+		}
+	}
+}
+
+func TestChangeMessageRetentionPeriod(t *testing.T) {
+	queueURL := aws.String("queueURL")
+	testCases := []struct {
+		Duration                time.Duration
+		CallsAWS                bool
+		ExpectedErr             error
+		ExpectedRetentionPeriod int64
+	}{
+		{Duration: 5 * time.Minute, CallsAWS: true, ExpectedRetentionPeriod: 300},
+		{Duration: -1 * time.Second, ExpectedErr: ErrMessageRetentionPeriodOutOfRange},
+		{Duration: 1000 * time.Hour, ExpectedErr: ErrMessageRetentionPeriodOutOfRange},
+		{Duration: 60 * time.Second, ExpectedErr: errors.New("expected SetQueueAttributes error"), CallsAWS: true},
+	}
+	for _, tc := range testCases {
+		sqsMock := mockSQS{
+			stubbedSetQueueAttributesError: tc.ExpectedErr,
+		}
+		actualErr := changeMessageRetentionPeriod(queueURL, tc.Duration, &sqsMock)
+		expectedErr := tc.ExpectedErr
+		if expectedErr != actualErr {
+			t.Errorf("expected error %v, but got %v", expectedErr, actualErr)
+		}
+		if sqsMock.spiedSetQueueAttributesInput == nil {
+			if tc.CallsAWS {
+				t.Errorf("expected call to AWS, but none was made")
+			}
+			continue
+		}
+		if !tc.CallsAWS {
+			t.Errorf("expected not to call AWS, but it was called")
+		}
+		expectedTimeout := *aws.String(strconv.Itoa(int(tc.Duration.Seconds())))
+		actualVisibilityTimeout := *sqsMock.spiedSetQueueAttributesInput.Attributes[sqs.QueueAttributeNameMessageRetentionPeriod]
+		if expectedTimeout != actualVisibilityTimeout {
+			t.Errorf("expected retention timeout to be %s, but was %s", expectedTimeout, actualVisibilityTimeout)
+		}
+		actualQueueURL := *sqsMock.spiedSetQueueAttributesInput.QueueUrl
+		if *queueURL != actualQueueURL {
+			t.Errorf("expected queue URL to be %q, but was %q", *queueURL, actualQueueURL)
+		}
+	}
+}
+
+func TestChangeVisibilityTimeout(t *testing.T) {
+	queueURL := aws.String("queueURL")
+	testCases := []struct {
+		Duration                  time.Duration
+		CallsAWS                  bool
+		ExpectedErr               error
+		ExpectedVisibilityTimeout int64
+	}{
+		{Duration: 5 * time.Minute, CallsAWS: true, ExpectedVisibilityTimeout: 300},
+		{Duration: -1 * time.Second, ExpectedErr: ErrVisibilityTimeoutOutOfRange},
+		{Duration: 1000 * time.Minute, ExpectedErr: ErrVisibilityTimeoutOutOfRange},
+		{ExpectedErr: errors.New("expected SetQueueAttributes error"), CallsAWS: true},
+	}
+	for _, tc := range testCases {
+		sqsMock := mockSQS{
+			stubbedSetQueueAttributesError: tc.ExpectedErr,
+		}
+		actualErr := changeVisibilityTimeout(queueURL, tc.Duration, &sqsMock)
+		expectedErr := tc.ExpectedErr
+		if expectedErr != actualErr {
+			t.Errorf("expected error %v, but got %v", expectedErr, actualErr)
+		}
+		if sqsMock.spiedSetQueueAttributesInput == nil {
+			if tc.CallsAWS {
+				t.Errorf("expected call to AWS, but none was made")
+			}
+			continue
+		}
+		if !tc.CallsAWS {
+			t.Errorf("expected not to call AWS, but it was called")
+		}
+		expectedTimeout := *aws.String(strconv.Itoa(int(tc.Duration.Seconds())))
+		actualVisibilityTimeout := *sqsMock.spiedSetQueueAttributesInput.Attributes[sqs.QueueAttributeNameVisibilityTimeout]
+		if expectedTimeout != actualVisibilityTimeout {
+			t.Errorf("expected visibility timeout to be %s, but was %s", expectedTimeout, actualVisibilityTimeout)
+		}
+		actualQueueURL := *sqsMock.spiedSetQueueAttributesInput.QueueUrl
+		if *queueURL != actualQueueURL {
+			t.Errorf("expected queue URL to be %q, but was %q", *queueURL, actualQueueURL)
 		}
 	}
 }
