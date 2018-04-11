@@ -7,7 +7,6 @@ import (
 	"context"
 	"flag"
 	"log"
-	"time"
 
 	pubsub "github.com/infobloxopen/atlas-pubsub"
 	"github.com/infobloxopen/atlas-pubsub/examples/hello"
@@ -35,14 +34,7 @@ func main() {
 		log.Printf("Only receiving messages written in %q", *languageFilter)
 	}
 
-	// If trying to run basic subscriber you can start like this:
-	// c, e := s.Start(context.Background())
-
-	// If you need a subscriber with a filter, different retention period, or visibility timeout you can use
-	// the following approach:
-	retentionPeriod := 100 * time.Minute   // Length of time a message can stay in the queue
-	visibilityTimeout := 200 * time.Second // Period of time during which subsriber prevents other consumers from receiving and processing the message
-	c, e := s.Start(context.Background(), pubsub.Filter(md), pubsub.RetentionPeriod(retentionPeriod), pubsub.VisibilityTimeout(visibilityTimeout))
+	c, e := s.Start(context.Background(), pubsub.Filter(md))
 
 	for {
 		select {

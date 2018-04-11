@@ -57,11 +57,21 @@ func (s *grpcWrapper) Subscribe(req *SubscribeRequest, srv PubSub_SubscribeServe
 
 	ctx, cancel := context.WithCancel(srv.Context())
 	defer cancel()
+	subscriberOptions := []pubsub.Option{}
+	if req.GetRetentionPeriod() != nil {
+		retentionPeriod := time.Duration(req.GetRetentionPeriod().GetValue()) * time.Second
+		subscriberOptions = append(subscriberOptions, pubsub.RetentionPeriod(retentionPeriod))
+	}
+	if req.GetVisibilityTimeout() != nil {
+		visibilityTimeout := time.Duration(req.GetVisibilityTimeout().GetValue()) * time.Second
+		subscriberOptions = append(subscriberOptions, pubsub.VisibilityTimeout(visibilityTimeout))
+	}
+	if len(req.GetFilter()) != 0 {
+		subscriberOptions = append(subscriberOptions, pubsub.Filter(req.GetFilter()))
+	}
 
-	// Change int64 to time.Duration
-	retentionPeriod := time.Duration(req.GetRetentionPeriod()) * time.Second
-	visibilityTimeout := time.Duration(req.GetVisibilityTimeout()) * time.Second
-	c, e := subscriber.Start(ctx, pubsub.VisibilityTimeout(visibilityTimeout), pubsub.RetentionPeriod(retentionPeriod), pubsub.Filter(req.GetFilter()))
+	c, e := subscriber.Start(ctx, subscriberOptions...)
+
 	log.Printf("GRPC: starting subscription for topic %q, subID %q, filter %v", req.GetTopic(), req.GetSubscriptionId(), req.GetFilter())
 	for {
 		select {

@@ -126,7 +126,7 @@ func TestClientStart(t *testing.T) {
 		client:         &mc,
 	}
 
-	c, e := cw.Start(testCtx, nil)
+	c, e := cw.Start(testCtx)
 	// TODO: figure out why this thing needs to sleep
 	time.Sleep(time.Millisecond)
 	{ // verify an error response is sent through the error channel
