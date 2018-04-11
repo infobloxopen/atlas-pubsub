@@ -68,13 +68,8 @@ func (s *awsSubscriber) Start(ctx context.Context, opts ...pubsub.Option) (<-cha
 			errChannel <- fErr
 			return
 		}
-		// Set Retention Period if needed
-		if err := changeMessageRetentionPeriod(s.queueURL, subscriberOptions.RetentionPeriod, s.sqs); err != nil {
-			errChannel <- err
-			return
-		}
-		// Set Visibility Timeout if needed
-		if err := changeVisibilityTimeout(s.queueURL, subscriberOptions.VisibilityTimeout, s.sqs); err != nil {
+		// Set Retention Period and visibility timeout if needed
+		if err := ensureQueueAttributes(s.queueURL, subscriberOptions.RetentionPeriod, subscriberOptions.VisibilityTimeout, s.sqs); err != nil {
 			errChannel <- err
 			return
 		}

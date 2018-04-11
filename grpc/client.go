@@ -8,6 +8,7 @@ import (
 	"context"
 	"time"
 
+	google_protobuf "github.com/golang/protobuf/ptypes/wrappers"
 	pubsub "github.com/infobloxopen/atlas-pubsub"
 	"google.golang.org/grpc"
 )
@@ -56,8 +57,8 @@ func (w *grpcClientWrapper) Start(ctx context.Context, opts ...pubsub.Option) (<
 			Topic:             w.topic,
 			SubscriptionId:    w.subscriptionID,
 			Filter:            subscriberOptions.Filter,
-			RetentionPeriod:   int64(subscriberOptions.RetentionPeriod.Seconds()),
-			VisibilityTimeout: int64(subscriberOptions.VisibilityTimeout.Seconds()),
+			RetentionPeriod:   &google_protobuf.UInt64Value{Value: uint64(subscriberOptions.RetentionPeriod.Seconds())},
+			VisibilityTimeout: &google_protobuf.UInt64Value{Value: uint64(subscriberOptions.VisibilityTimeout.Seconds())},
 		})
 		if err != nil {
 			errC <- err

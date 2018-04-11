@@ -215,10 +215,10 @@ func ensureQueuePolicy(queueURL, topicArn *string, sqsClient sqsiface.SQSAPI) er
 	return policyErr
 }
 
-// changeMessageRetentionPeriod, changes the length of time in seconds for which Amazon SQS retains a message.
+// ensureMessageRetentionPeriod changes the length of time in seconds for which Amazon SQS retains a message.
 // periodLength the length of message retention in seconds
 // The default if not changed is 4 days or (345600), min is 60 seconds to 1209600 seconds (14 days)
-func changeMessageRetentionPeriod(queueURL *string, newDuration time.Duration, sqsClient sqsiface.SQSAPI) error {
+func ensureMessageRetentionPeriod(queueURL *string, newDuration time.Duration, sqsClient sqsiface.SQSAPI) error {
 	d := int(newDuration.Seconds())
 	if d < 60 || d > 1209600 {
 		return ErrMessageRetentionPeriodOutOfRange
@@ -232,10 +232,10 @@ func changeMessageRetentionPeriod(queueURL *string, newDuration time.Duration, s
 	return err
 }
 
-// changeVisibilityTimeout, Extends the message visibility for the whole queue
+// ensureVisibilityTimeout extends the message visibility for the whole queue
 // newDuration: The new value for the message's visibility timeout.
 // Value needs to be 0 to 43200 seconds.
-func changeVisibilityTimeout(queueURL *string, newDuration time.Duration, sqsClient sqsiface.SQSAPI) error {
+func ensureVisibilityTimeout(queueURL *string, newDuration time.Duration, sqsClient sqsiface.SQSAPI) error {
 	d := int(newDuration.Seconds())
 	if d < 0 || d > 43200 {
 		return ErrVisibilityTimeoutOutOfRange
@@ -244,6 +244,28 @@ func changeVisibilityTimeout(queueURL *string, newDuration time.Duration, sqsCli
 		QueueUrl: queueURL,
 		Attributes: map[string]*string{
 			sqs.QueueAttributeNameVisibilityTimeout: aws.String(strconv.Itoa(d)),
+		},
+	})
+	return err
+}
+
+// ensureQueueAttributes changes the retention period and visibility time out for a subscriber.
+// Retention period needs to be between 60 and 1209600 seconds.
+// Visbility timeout needs to be between 0 and 43200 seconds.
+func ensureQueueAttributes(queueURL *string, retentionPeriod time.Duration, visibilityTimeout time.Duration, sqsClient sqsiface.SQSAPI) error {
+	vt := int(visibilityTimeout.Seconds())
+	if vt < 0 || vt > 43200 {
+		return ErrVisibilityTimeoutOutOfRange
+	}
+	rp := int(retentionPeriod.Seconds())
+	if rp < 60 || rp > 1209600 {
+		return ErrMessageRetentionPeriodOutOfRange
+	}
+	_, err := sqsClient.SetQueueAttributes(&sqs.SetQueueAttributesInput{
+		QueueUrl: queueURL,
+		Attributes: map[string]*string{
+			sqs.QueueAttributeNameVisibilityTimeout:      aws.String(strconv.Itoa(vt)),
+			sqs.QueueAttributeNameMessageRetentionPeriod: aws.String(strconv.Itoa(rp)),
 		},
 	})
 	return err
