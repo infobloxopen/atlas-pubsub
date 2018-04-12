@@ -127,15 +127,16 @@ type mockSubscribeServer struct {
 
 	stubbedContext context.Context
 
-	spiedSendMessage   []byte
-	spiedSendMessageID string
-	stubbedSendError   error
+	spiedSendMessage         []byte
+	spiedSendMessageID       string
+	spiedSendMessageMetadata map[string]string
+	stubbedSendError         error
 }
 
 func (ss *mockSubscribeServer) Send(resp *SubscribeResponse) error {
 	ss.spiedSendMessage = resp.GetMessage()
 	ss.spiedSendMessageID = resp.GetMessageId()
-
+	ss.spiedSendMessageMetadata = resp.GetMetadata()
 	return ss.stubbedSendError
 }
 
@@ -204,19 +205,24 @@ func TestServerSubscribe_MainCase(t *testing.T) {
 	{ // verify a message sent through a channel gets sent through PubSub_SubscribeServer
 		expectedMessageID := "test messageID"
 		expectedMessage := []byte{1, 2, 3, 4}
+		expectedMetadata := map[string]string{"foo": "bar"}
 		mock.stubbedStartMessageChannel <- mockMessage{
 			messageID: expectedMessageID,
 			message:   expectedMessage,
+			metadata:  expectedMetadata,
 		}
 		time.Sleep(10 * time.Millisecond)
 		actualMessageID := mockSubscribe.spiedSendMessageID
 		actualMessage := mockSubscribe.spiedSendMessage
-
+		actualMetadata := mockSubscribe.spiedSendMessageMetadata
 		if expectedMessageID != actualMessageID {
 			t.Errorf("expected messageID %q, but got %q", expectedMessageID, actualMessageID)
 		}
 		if !bytes.Equal(expectedMessage, actualMessage) {
 			t.Errorf("expected message %v, but got %v", expectedMessage, actualMessage)
+		}
+		if !reflect.DeepEqual(expectedMetadata, actualMetadata) {
+			t.Errorf("expected metadata %v, but got %v", expectedMetadata, actualMetadata)
 		}
 	}
 	{ // verify Subscribe terminates when the subscriber channel closes

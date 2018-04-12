@@ -69,6 +69,7 @@ func (s *grpcWrapper) Subscribe(req *SubscribeRequest, srv PubSub_SubscribeServe
 			if err := srv.Send(&SubscribeResponse{
 				MessageId: msg.MessageID(),
 				Message:   msg.Message(),
+				Metadata:  msg.Metadata(),
 			}); err != nil {
 				log.Printf("GRPC: error serving message for topic %q, subID %q: %v", req.GetTopic(), req.GetSubscriptionId(), err)
 				return err

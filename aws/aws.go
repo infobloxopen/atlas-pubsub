@@ -298,11 +298,33 @@ func decodeFromSQSMessage(sqsMessage *string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(v.Payload)
 }
 
-func decodeMessageAttributes(attributes map[string]*sqs.MessageAttributeValue) map[string]string {
+func decodeMessageAttributes(sqsMessage *string) map[string]string {
+	// TODO: clean this up
 	decoded := map[string]string{}
-	for key, value := range attributes {
-		if *value.DataType == "String" {
-			decoded[key] = *value.StringValue
+	var objmap map[string]*json.RawMessage
+	if err := json.Unmarshal([]byte(*sqsMessage), &objmap); err != nil {
+		log.Printf("AWS: error parsing SQS message attributes: %v", err)
+		return decoded
+	}
+	log.Printf("AWS: Unmarshalled 1 ********** %v **********", objmap)
+	var objmap2 map[string]*json.RawMessage
+	if err := json.Unmarshal(*objmap["MessageAttributes"], &objmap2); err != nil {
+		log.Printf("AWS: error parsing objmap2: %v", err)
+		return decoded
+	}
+	log.Printf("AWS: Unmarshalled 2 ********** %v **********", objmap2)
+
+	for key, value := range objmap2 {
+		uv := new(struct {
+			Type  string `json:"Type"`
+			Value string `json: "Value"`
+		})
+		if err := json.Unmarshal(*value, &uv); err != nil {
+			log.Print(err)
+			continue
+		}
+		if uv.Type == "String" {
+			decoded[key] = uv.Value
 		}
 	}
 

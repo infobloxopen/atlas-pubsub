@@ -42,7 +42,7 @@ func main() {
 				return
 			}
 			greeting := string(msg.Message())
-			log.Printf("received message: %q", greeting)
+			log.Printf("received message: %q\t%v", greeting, msg.Metadata())
 			go func() {
 				if err := msg.Ack(); err != nil {
 					log.Fatalf("failed to ack messageID %q: %v", msg.MessageID(), err)

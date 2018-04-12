@@ -245,9 +245,10 @@ func (s *awsSubscriber) pull(ctx context.Context, channel chan pubsub.Message, e
 	s.wg.Add(1)
 	defer s.wg.Done()
 	resp, err := s.sqs.ReceiveMessageWithContext(ctx, &sqs.ReceiveMessageInput{
-		QueueUrl:            s.queueURL,
-		WaitTimeSeconds:     aws.Int64(20),
-		MaxNumberOfMessages: aws.Int64(1),
+		QueueUrl:              s.queueURL,
+		WaitTimeSeconds:       aws.Int64(20),
+		MaxNumberOfMessages:   aws.Int64(1),
+		MessageAttributeNames: []*string{aws.String("All")},
 	})
 	if err != nil {
 		errChannel <- err
@@ -264,7 +265,7 @@ func (s *awsSubscriber) pull(ctx context.Context, channel chan pubsub.Message, e
 			subscriber: s,
 			messageID:  *msg.ReceiptHandle,
 			message:    message,
-			metadata:   decodeMessageAttributes(msg.MessageAttributes),
+			metadata:   decodeMessageAttributes(msg.Body),
 		}
 	}
 }
