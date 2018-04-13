@@ -2,28 +2,24 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: pubsub
-  namespace: atlas 
-spec: 
-  replicas: 1 
-  template: 
+  namespace: atlas
+spec:
+  replicas: 1
+  template:
     metadata:
       labels:
         app: pubsub
-    spec: 
+    spec:
       containers:
       - name: pubsub-server
-        image: infobloxcto/atlas.pubsub:c18518c-dirty
+        image: infobloxcto/atlas.pubsub:85d68af
         imagePullPolicy: Always
         env:
-        - name: AWS_ACCESS_KEY_ID #need to pass this as a env variable 
-          value: $AWS_ACCESS_KEY_ID
-        - name: AWS_SECRET_ACCESS_KEY
-          value: $AWS_SECRET_ACCESS_KEY
         - name: AWS_REGION
           value: us-east-1
         ports:
           - name: grpc
-            containerPort: 80
+            containerPort: 8080
             protocol: TCP
         args: [
             "debug"
@@ -38,6 +34,6 @@ spec:
   ports:
     - name: grpc
       port: 80
-      targetPort: 80
+      targetPort: 8080
   selector:
-    app: pubsub 
+    app: pubsub
