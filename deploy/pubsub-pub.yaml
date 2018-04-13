@@ -2,17 +2,17 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: pubsub-pub
-  namespace: atlas 
-spec: 
-  replicas: 1 
-  template:  
+  namespace: atlas
+spec:
+  replicas: 1
+  template:
     metadata:
       labels:
         app: pubsub-pub
-    spec: 
+    spec:
       containers:
       - name: pubsub-pub
-        image: infobloxcto/atlas.pubsub-pub:c18518c-dirty
+        image: infobloxcto/atlas.pubsub-pub:85d68af
         imagePullPolicy: Always
         env:
         ports:
