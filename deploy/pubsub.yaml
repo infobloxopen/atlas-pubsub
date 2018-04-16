@@ -12,7 +12,7 @@ spec:
     spec:
       containers:
       - name: pubsub-server
-        image: infobloxcto/atlas.pubsub:85d68af
+        image: infobloxcto/atlas.pubsub:07812bb
         imagePullPolicy: Always
         env:
         - name: AWS_REGION

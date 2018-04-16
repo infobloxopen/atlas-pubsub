@@ -12,7 +12,7 @@ spec:
     spec:
       containers:
       - name: pubsub-sub
-        image: infobloxcto/atlas.pubsub-sub:85d68af
+        image: infobloxcto/atlas.pubsub-sub:07812bb
         imagePullPolicy: Always
         env:
         ports:
