@@ -254,15 +254,11 @@ func TestEncodeMessageAttributes(t *testing.T) {
 	}
 }
 
-// TODO: fix this unit test
-// func TestDecodeMessageAttributes(t *testing.T) {
-// 	input := map[string]*sqs.MessageAttributeValue{
-// 		"foo": &sqs.MessageAttributeValue{DataType: aws.String("String"), StringValue: aws.String("bar")},
-// 		"baz": &sqs.MessageAttributeValue{DataType: aws.String("NotString"), StringValue: aws.String("qux")},
-// 	}
-// 	expected := map[string]string{"foo": "bar"}
-// 	actual := decodeMessageAttributes(input)
-// 	if !reflect.DeepEqual(expected, actual) {
-// 		t.Errorf("expected decoded metadata to be %v, but was %v", expected, actual)
-// 	}
-// }
+func TestDecodeMessageAttributes(t *testing.T) {
+	expected := map[string]string{"foo": "bar"}
+	msg := mustWrapIntoSQSMessage(t, nil, nil, expected)
+	actual := decodeMessageAttributes(msg.Body)
+	if !reflect.DeepEqual(expected, actual) {
+		t.Errorf("expected decoded metadata to be %v, but was %v", expected, actual)
+	}
+}

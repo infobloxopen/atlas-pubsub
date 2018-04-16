@@ -298,23 +298,20 @@ func decodeFromSQSMessage(sqsMessage *string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(v.Payload)
 }
 
+// decodeMessageAttributes returns the metadata from the sqsMessage body
 func decodeMessageAttributes(sqsMessage *string) map[string]string {
-	// TODO: clean this up
 	decoded := map[string]string{}
-	var objmap map[string]*json.RawMessage
-	if err := json.Unmarshal([]byte(*sqsMessage), &objmap); err != nil {
+	var messageBody map[string]*json.RawMessage
+	if err := json.Unmarshal([]byte(*sqsMessage), &messageBody); err != nil {
 		log.Printf("AWS: error parsing SQS message attributes: %v", err)
 		return decoded
 	}
-	log.Printf("AWS: Unmarshalled 1 ********** %v **********", objmap)
-	var objmap2 map[string]*json.RawMessage
-	if err := json.Unmarshal(*objmap["MessageAttributes"], &objmap2); err != nil {
-		log.Printf("AWS: error parsing objmap2: %v", err)
+	var messageAttributes map[string]*json.RawMessage
+	if err := json.Unmarshal(*messageBody["MessageAttributes"], &messageAttributes); err != nil {
+		log.Printf("AWS: error parsing through message attributes: %v", err)
 		return decoded
 	}
-	log.Printf("AWS: Unmarshalled 2 ********** %v **********", objmap2)
-
-	for key, value := range objmap2 {
+	for key, value := range messageAttributes {
 		uv := new(struct {
 			Type  string `json:"Type"`
 			Value string `json: "Value"`
@@ -327,6 +324,5 @@ func decodeMessageAttributes(sqsMessage *string) map[string]string {
 			decoded[key] = uv.Value
 		}
 	}
-
 	return decoded
 }
