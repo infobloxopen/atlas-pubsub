@@ -298,13 +298,31 @@ func decodeFromSQSMessage(sqsMessage *string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(v.Payload)
 }
 
-func decodeMessageAttributes(attributes map[string]*sqs.MessageAttributeValue) map[string]string {
+// decodeMessageAttributes returns the metadata from the sqsMessage body
+func decodeMessageAttributes(sqsMessage *string) map[string]string {
 	decoded := map[string]string{}
-	for key, value := range attributes {
-		if *value.DataType == "String" {
-			decoded[key] = *value.StringValue
+	var messageBody map[string]*json.RawMessage
+	if err := json.Unmarshal([]byte(*sqsMessage), &messageBody); err != nil {
+		log.Printf("AWS: error parsing SQS message attributes: %v", err)
+		return decoded
+	}
+	var messageAttributes map[string]*json.RawMessage
+	if err := json.Unmarshal(*messageBody["MessageAttributes"], &messageAttributes); err != nil {
+		log.Printf("AWS: error parsing through message attributes: %v", err)
+		return decoded
+	}
+	for key, value := range messageAttributes {
+		uv := new(struct {
+			Type  string `json:"Type"`
+			Value string `json: "Value"`
+		})
+		if err := json.Unmarshal(*value, &uv); err != nil {
+			log.Print(err)
+			continue
+		}
+		if uv.Type == "String" {
+			decoded[key] = uv.Value
 		}
 	}
-
 	return decoded
 }
