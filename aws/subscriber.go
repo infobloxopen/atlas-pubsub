@@ -241,6 +241,7 @@ func (s *awsSubscriber) ensureFilterPolicy(filter map[string]string) error {
 	return nil
 }
 
+// pull returns the message and error channel for the subscriber
 func (s *awsSubscriber) pull(ctx context.Context, channel chan pubsub.Message, errChannel chan error) {
 	s.wg.Add(1)
 	defer s.wg.Done()

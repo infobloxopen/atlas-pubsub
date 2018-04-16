@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -206,10 +207,22 @@ func mustWrapIntoSQSMessage(t *testing.T, testMsg []byte, receiptHandle *string,
 // receiving a message from an SQS queue
 func wrapIntoSQSMessage(testMsg []byte, receiptHandle *string, md map[string]string) (*sqs.Message, error) {
 	encoded := encodeToSNSMessage(testMsg)
+	type MessageAttributeValue struct {
+		Type  *string `type:"string" required:"true"`
+		Value *string `type:"string"`
+	}
+	attributes := make(map[string]*MessageAttributeValue)
+	if md != nil {
+		for key, value := range md {
+			attributes[key] = &MessageAttributeValue{Value: aws.String(value), Type: aws.String("String")}
+		}
+	}
 	payload := struct {
-		Payload string `json:"Message"`
+		Payload           string                            `json:"Message"`
+		MessageAttributes map[string]*MessageAttributeValue `json:"MessageAttributes"`
 	}{
 		*encoded,
+		attributes,
 	}
 	marshalled, merr := json.Marshal(payload)
 	if merr != nil {
@@ -221,15 +234,9 @@ func wrapIntoSQSMessage(testMsg []byte, receiptHandle *string, md map[string]str
 		handle = aws.String(uuid.New().String())
 	}
 
-	attrs := make(map[string]*sqs.MessageAttributeValue)
-	for key, value := range md {
-		attrs[key] = &sqs.MessageAttributeValue{DataType: aws.String("String"), StringValue: aws.String(value)}
-	}
-
 	return &sqs.Message{
-		Body:              aws.String(string(marshalled)),
-		ReceiptHandle:     handle,
-		MessageAttributes: attrs,
+		Body:          aws.String(string(marshalled)),
+		ReceiptHandle: handle,
 	}, nil
 }
 
@@ -262,12 +269,9 @@ func TestWrapIntoSQSMessage(t *testing.T) {
 		}
 	}
 	{ // verify metadata
-		for key, expectedValue := range expectedMd {
-			if actualEntry, ok := msg.MessageAttributes[key]; !ok {
-				t.Errorf("expected %q in map, but wasn't", key)
-			} else if actualValue := *actualEntry.StringValue; expectedValue != actualValue {
-				t.Errorf("expected %q, got %q", expectedValue, actualValue)
-			}
+		actualMd := decodeMessageAttributes(msg.Body)
+		if !reflect.DeepEqual(expectedMd, actualMd) {
+			t.Errorf("expected %q, got %q", expected, actualMd)
 		}
 	}
 }
