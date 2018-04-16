@@ -72,7 +72,7 @@ func (s *grpcWrapper) Subscribe(req *SubscribeRequest, srv PubSub_SubscribeServe
 
 	c, e := subscriber.Start(ctx, subscriberOptions...)
 
-	log.Printf("GRPC: starting subscription for topic %q, subID %q, filter %v", req.GetTopic(), req.GetSubscriptionId(), req.GetFilter())
+	log.Printf("GRPC: starting subscription %v", req)
 	for {
 		select {
 		case <-srv.Context().Done():
