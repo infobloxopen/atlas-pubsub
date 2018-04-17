@@ -51,13 +51,26 @@ type awsSubscriber struct {
 	wg sync.WaitGroup
 }
 
-func (s *awsSubscriber) Start(ctx context.Context, filter map[string]string) (<-chan pubsub.Message, <-chan error) {
+func (s *awsSubscriber) Start(ctx context.Context, opts ...pubsub.Option) (<-chan pubsub.Message, <-chan error) {
+	// Default Options for AWS subscriber
+	subscriberOptions := &pubsub.Options{
+		VisibilityTimeout: 30 * time.Second,
+		RetentionPeriod:   345600 * time.Second,
+	}
+	for _, opt := range opts {
+		opt(subscriberOptions)
+	}
 	channel := make(chan pubsub.Message)
 	errChannel := make(chan error)
 	go func() {
 		defer close(channel)
-		if fErr := s.ensureFilterPolicy(filter); fErr != nil {
+		if fErr := s.ensureFilterPolicy(subscriberOptions.Filter); fErr != nil {
 			errChannel <- fErr
+			return
+		}
+		// Set Retention Period and visibility timeout if needed
+		if err := ensureQueueAttributes(s.queueURL, subscriberOptions.RetentionPeriod, subscriberOptions.VisibilityTimeout, s.sqs); err != nil {
+			errChannel <- err
 			return
 		}
 		for {

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -18,6 +19,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"github.com/google/uuid"
+	pubsub "github.com/infobloxopen/atlas-pubsub"
 )
 
 // some arbitrary prefix I came up with to help distinguish between aws broker
@@ -32,6 +34,12 @@ const subscriptionIDMaxLength = 40
 // AWS SNS topic names can be up to 256 characters, but because of our naming
 // convention we're limited to the total 80-character max of the SQS name length.
 const topicNameMaxLength = 40 - len(topicNamePrefix)
+
+// ErrVisibilityTimeoutOutOfRange is returned whenever an invalid duration is passed to changeVisibilityTimeout
+var ErrVisibilityTimeoutOutOfRange = errors.New("The visibility timeout value is out of range. Values can be 0 to 43200 seconds")
+
+// ErrMessageRetentionPeriodOutOfRange is returned whenever an invalid duration is passed to changeMessageRetentionPeriod
+var ErrMessageRetentionPeriodOutOfRange = errors.New("The message retention period value is out of range. Values can be 60 to 1209600 seconds")
 
 // VerifyPermissions checks if the aws config exists and checks if it has permissions to
 // create sns topics, send messages, create SQS topics, delete topics, and delete sqs queues
@@ -69,7 +77,7 @@ func verifyPermissions(subscriber *awsSubscriber, publisher *publisher) error {
 	md := map[string]string{"subscription": *subscriber.queueArn}
 
 	log.Println("verify permissions: starting subscription")
-	c, e := subscriber.Start(ctx, md)
+	c, e := subscriber.Start(ctx, pubsub.Filter(md))
 	testMessage := []byte("Permissions Verification Test Message. Subscription queue: " + *subscriber.queueArn)
 
 	log.Println("verify permissions: publishing test message")
@@ -205,6 +213,28 @@ func ensureQueuePolicy(queueURL, topicArn *string, sqsClient sqsiface.SQSAPI) er
 		},
 	})
 	return policyErr
+}
+
+// ensureQueueAttributes changes the retention period and visibility time out for a subscriber.
+// Retention period needs to be between 60 and 1209600 seconds.
+// Visbility timeout needs to be between 0 and 43200 seconds.
+func ensureQueueAttributes(queueURL *string, retentionPeriod time.Duration, visibilityTimeout time.Duration, sqsClient sqsiface.SQSAPI) error {
+	vt := int(visibilityTimeout.Seconds())
+	if vt < 0 || vt > 43200 {
+		return ErrVisibilityTimeoutOutOfRange
+	}
+	rp := int(retentionPeriod.Seconds())
+	if rp < 60 || rp > 1209600 {
+		return ErrMessageRetentionPeriodOutOfRange
+	}
+	_, err := sqsClient.SetQueueAttributes(&sqs.SetQueueAttributesInput{
+		QueueUrl: queueURL,
+		Attributes: map[string]*string{
+			sqs.QueueAttributeNameVisibilityTimeout:      aws.String(strconv.Itoa(vt)),
+			sqs.QueueAttributeNameMessageRetentionPeriod: aws.String(strconv.Itoa(rp)),
+		},
+	})
+	return err
 }
 
 // ensureQueueSubscription subscribes the given SQS queue to the given SNS topic

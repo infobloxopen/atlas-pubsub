@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	google_protobuf "github.com/golang/protobuf/ptypes/wrappers"
 	pubsub "github.com/infobloxopen/atlas-pubsub"
 )
 
@@ -83,18 +84,31 @@ type mockSubscriber struct {
 	spiedConstructorSubscriptionID string
 	stubbedConstructorError        error
 
-	spiedStartContext          context.Context
-	spiedStartFilter           map[string]string
-	stubbedStartMessageChannel chan pubsub.Message
-	stubbedStartErrorChannel   chan error
+	spiedStartContext           context.Context
+	spiedStartFilter            map[string]string
+	spiedStartRetentionPeriod   uint64
+	spiedStartVisibilityTimeout uint64
+	stubbedStartMessageChannel  chan pubsub.Message
+	stubbedStartErrorChannel    chan error
 
 	spiedAckMessageMessagID string
 	stubbedAckMessageError  error
 }
 
-func (s *mockSubscriber) Start(ctx context.Context, filter map[string]string) (<-chan pubsub.Message, <-chan error) {
+func (s *mockSubscriber) Start(ctx context.Context, opts ...pubsub.Option) (<-chan pubsub.Message, <-chan error) {
+	// Default Options
+	subscriberOptions := &pubsub.Options{
+		VisibilityTimeout: 30 * time.Second,
+		RetentionPeriod:   345600 * time.Second,
+	}
+	for _, opt := range opts {
+		opt(subscriberOptions)
+	}
+
 	s.spiedStartContext = ctx
-	s.spiedStartFilter = filter
+	s.spiedStartFilter = subscriberOptions.Filter
+	s.spiedStartRetentionPeriod = uint64(subscriberOptions.RetentionPeriod.Seconds())
+	s.spiedStartVisibilityTimeout = uint64(subscriberOptions.VisibilityTimeout.Seconds())
 	mc := s.stubbedStartMessageChannel
 	if mc == nil {
 		mc = make(chan pubsub.Message)
@@ -164,9 +178,11 @@ func setupServerForSubscribeTest() (*SubscribeRequest, *mockSubscriber, *mockSub
 	mockSubscribe := &mockSubscribeServer{stubbedContext: context.Background()}
 	server := NewPubSubServer(nil, mockSubscriberFactory(mock))
 	subscribeRequest := &SubscribeRequest{
-		Topic:          "testTopic",
-		SubscriptionId: "testSubscriptionID",
-		Filter:         map[string]string{"foo": "bar"},
+		Topic:             "testTopic",
+		SubscriptionId:    "testSubscriptionID",
+		Filter:            map[string]string{"foo": "bar"},
+		RetentionPeriod:   &google_protobuf.UInt64Value{Value: uint64(60)},
+		VisibilityTimeout: &google_protobuf.UInt64Value{Value: uint64(60)},
 	}
 
 	return subscribeRequest, mock, mockSubscribe, func() error { return server.Subscribe(subscribeRequest, mockSubscribe) }
@@ -200,6 +216,20 @@ func TestServerSubscribe_MainCase(t *testing.T) {
 		actualFilter := mock.spiedStartFilter
 		if !reflect.DeepEqual(expectedFilter, actualFilter) {
 			t.Errorf("expected filter to be %v, but was %v", expectedFilter, actualFilter)
+		}
+	}
+	{ // verify retention period passed through successfully
+		expectedRetentionPeriod := subscribeRequest.GetRetentionPeriod()
+		actualRetentionPeriod := mock.spiedStartRetentionPeriod
+		if expectedRetentionPeriod.GetValue() != actualRetentionPeriod {
+			t.Errorf("expected retention period to be %v, but was %v", expectedRetentionPeriod, actualRetentionPeriod)
+		}
+	}
+	{ // verify visibility timeout passed through successfully
+		expectedVisibilityTimeout := subscribeRequest.GetVisibilityTimeout()
+		actualVisibilityTimeout := mock.spiedStartVisibilityTimeout
+		if expectedVisibilityTimeout.GetValue() != actualVisibilityTimeout {
+			t.Errorf("expected visibility timeout to be %v, but was %v", expectedVisibilityTimeout, actualVisibilityTimeout)
 		}
 	}
 	{ // verify a message sent through a channel gets sent through PubSub_SubscribeServer

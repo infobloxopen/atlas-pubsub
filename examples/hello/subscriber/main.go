@@ -8,6 +8,7 @@ import (
 	"flag"
 	"log"
 
+	pubsub "github.com/infobloxopen/atlas-pubsub"
 	"github.com/infobloxopen/atlas-pubsub/examples/hello"
 	pubsubgrpc "github.com/infobloxopen/atlas-pubsub/grpc"
 	"google.golang.org/grpc"
@@ -32,7 +33,8 @@ func main() {
 		md["language"] = *languageFilter
 		log.Printf("Only receiving messages written in %q", *languageFilter)
 	}
-	c, e := s.Start(context.Background(), md)
+
+	c, e := s.Start(context.Background(), pubsub.Filter(md))
 
 	for {
 		select {

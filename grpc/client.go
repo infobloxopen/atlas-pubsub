@@ -8,6 +8,7 @@ import (
 	"context"
 	"time"
 
+	google_protobuf "github.com/golang/protobuf/ptypes/wrappers"
 	pubsub "github.com/infobloxopen/atlas-pubsub"
 	"google.golang.org/grpc"
 )
@@ -38,17 +39,26 @@ func (w *grpcClientWrapper) Publish(ctx context.Context, message []byte, metadat
 	return err
 }
 
-func (w *grpcClientWrapper) Start(ctx context.Context, filter map[string]string) (<-chan pubsub.Message, <-chan error) {
+func (w *grpcClientWrapper) Start(ctx context.Context, opts ...pubsub.Option) (<-chan pubsub.Message, <-chan error) {
+	// Default Options
+	subscriberOptions := &pubsub.Options{
+		VisibilityTimeout: 30 * time.Second,
+		RetentionPeriod:   345600 * time.Second,
+	}
+	for _, opt := range opts {
+		opt(subscriberOptions)
+	}
 	msgC := make(chan pubsub.Message)
 	errC := make(chan error)
 
 	go func() {
 		defer close(msgC)
-
 		stream, err := w.client.Subscribe(ctx, &SubscribeRequest{
-			Topic:          w.topic,
-			SubscriptionId: w.subscriptionID,
-			Filter:         filter,
+			Topic:             w.topic,
+			SubscriptionId:    w.subscriptionID,
+			Filter:            subscriberOptions.Filter,
+			RetentionPeriod:   &google_protobuf.UInt64Value{Value: uint64(subscriberOptions.RetentionPeriod.Seconds())},
+			VisibilityTimeout: &google_protobuf.UInt64Value{Value: uint64(subscriberOptions.VisibilityTimeout.Seconds())},
 		})
 		if err != nil {
 			errC <- err

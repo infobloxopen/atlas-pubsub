@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -171,6 +173,62 @@ func TestEnsureQueuePolicy(t *testing.T) {
 		actualErr := ensureQueuePolicy(queueURL, topicArn, &sqsSpy)
 		if actualErr != expectedErr {
 			t.Errorf("expected sqs.SetQueueAttributes to return error :\n%v\nbut was:\n%v", expectedErr, actualErr)
+		}
+	}
+}
+
+func TestEnsureQueueAttributes(t *testing.T) {
+	queueURL := aws.String("queueURL")
+	testCases := []struct {
+		RetentionDuration         time.Duration
+		VisibilityDuration        time.Duration
+		CallsAWS                  bool
+		ExpectedErr               error
+		ExpectedVisibilityTimeout int64
+		ExpectedRetentionTimeout  int64
+	}{
+		{RetentionDuration: 1 * time.Minute, VisibilityDuration: 0 * time.Second, CallsAWS: true, ExpectedRetentionTimeout: 60, ExpectedVisibilityTimeout: 0},
+		{RetentionDuration: 1 * time.Minute, VisibilityDuration: 43200 * time.Second, CallsAWS: true, ExpectedRetentionTimeout: 60, ExpectedVisibilityTimeout: 43200},
+		{RetentionDuration: 1 * time.Minute, VisibilityDuration: -1 * time.Second, ExpectedErr: ErrVisibilityTimeoutOutOfRange},
+		{RetentionDuration: 1 * time.Minute, VisibilityDuration: 1000 * time.Minute, ExpectedErr: ErrVisibilityTimeoutOutOfRange},
+		{RetentionDuration: 1 * time.Minute, ExpectedRetentionTimeout: 60, ExpectedErr: errors.New("expected SetQueueAttributes error"), CallsAWS: true},
+		{RetentionDuration: 5 * time.Minute, VisibilityDuration: 0 * time.Second, CallsAWS: true, ExpectedRetentionTimeout: 300},
+		{RetentionDuration: 60 * time.Second, VisibilityDuration: 0 * time.Second, CallsAWS: true, ExpectedRetentionTimeout: 60},
+		{RetentionDuration: 1209600 * time.Second, VisibilityDuration: 0 * time.Second, CallsAWS: true, ExpectedRetentionTimeout: 1209600},
+		{RetentionDuration: -1 * time.Second, VisibilityDuration: 0 * time.Second, ExpectedErr: ErrMessageRetentionPeriodOutOfRange},
+		{RetentionDuration: 1000 * time.Hour, VisibilityDuration: 0 * time.Second, ExpectedErr: ErrMessageRetentionPeriodOutOfRange},
+	}
+	for _, tc := range testCases {
+		sqsMock := mockSQS{
+			stubbedSetQueueAttributesError: tc.ExpectedErr,
+		}
+		actualErr := ensureQueueAttributes(queueURL, tc.RetentionDuration, tc.VisibilityDuration, &sqsMock)
+		expectedErr := tc.ExpectedErr
+		if expectedErr != actualErr {
+			t.Errorf("expected error %v, but got %v", expectedErr, actualErr)
+		}
+		if sqsMock.spiedSetQueueAttributesInput == nil {
+			if tc.CallsAWS {
+				t.Errorf("expected call to AWS, but none was made")
+			}
+			continue
+		}
+		if !tc.CallsAWS {
+			t.Errorf("expected not to call AWS, but it was called")
+		}
+		expectedRetentionTimeout := *aws.String(strconv.Itoa(int(tc.ExpectedRetentionTimeout)))
+		actualRetentionTimeout := *sqsMock.spiedSetQueueAttributesInput.Attributes[sqs.QueueAttributeNameMessageRetentionPeriod]
+		if expectedRetentionTimeout != actualRetentionTimeout {
+			t.Errorf("expected retention duration to be %s, but was %s", expectedRetentionTimeout, actualRetentionTimeout)
+		}
+		expectedVisibilityTimeout := *aws.String(strconv.Itoa(int(tc.ExpectedVisibilityTimeout)))
+		actualVisibilityTimeout := *sqsMock.spiedSetQueueAttributesInput.Attributes[sqs.QueueAttributeNameVisibilityTimeout]
+		if expectedVisibilityTimeout != actualVisibilityTimeout {
+			t.Errorf("expected visibility timeout to be %s, but was %s", expectedVisibilityTimeout, actualVisibilityTimeout)
+		}
+		actualQueueURL := *sqsMock.spiedSetQueueAttributesInput.QueueUrl
+		if *queueURL != actualQueueURL {
+			t.Errorf("expected queue URL to be %q, but was %q", *queueURL, actualQueueURL)
 		}
 	}
 }
