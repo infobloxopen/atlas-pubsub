@@ -234,8 +234,8 @@ func TestEnsureFilterPolicy_DifferentPolicy_SetsSubscriptionAttributes(t *testin
 	}
 }
 
-// TestDeleteSubscription verifies that a sqs queue can be deleted successfully
-func TestDeleteSubscription(t *testing.T) {
+// TestDeleteQueue verifies that a sqs queue can be deleted successfully
+func TestDeleteQueue(t *testing.T) {
 	sqsMock := mockSQS{}
 	s, err := newSubscriber(&mockSNS{}, &sqsMock, "topic", "subscriptionID")
 	if err != nil {
@@ -245,11 +245,11 @@ func TestDeleteSubscription(t *testing.T) {
 
 	s.queueURL = aws.String("testurl")
 	sqsMock.stubbedDeleteQueueError = errors.New("test error")
-	actualErr := s.DeleteSubscription()
+	actualErr := s.DeleteQueue()
 	actualQueueURL := *sqsMock.spiedDeleteQueueInput.QueueUrl
 	expectedQueueURL := *s.queueURL
 
-	// verify that DeleteSubscription cathes errors
+	// verify that DeleteQueue cathes errors
 	if actualErr != sqsMock.stubbedDeleteQueueError {
 		t.Errorf("expected error %v, but got %v", sqsMock.stubbedDeleteQueueError, actualErr)
 	}
@@ -259,8 +259,42 @@ func TestDeleteSubscription(t *testing.T) {
 		t.Errorf("AWS queue url was incorrect, expected: \"%s\", actual: \"%s\"", expectedQueueURL, actualQueueURL)
 	}
 
-	// verify that DeleteSubscription passes successfully
+	// verify that DeleteQueue passes successfully
 	sqsMock.stubbedDeleteQueueError = nil
+	actualErr = s.DeleteQueue()
+	if actualErr != nil {
+		t.Errorf("expected no error from DeleteQueue, but got: %v", actualErr)
+	}
+}
+
+// TestDeleteSubscription verifies that a sns subscription can be deleted successfully.
+func TestDeleteSubscription(t *testing.T) {
+	sqsMock := mockSQS{}
+	snsMock := mockSNS{}
+	s, err := newSubscriber(&snsMock, &sqsMock, "topic", "subscriptionID")
+	if err != nil {
+		t.Errorf("expected no error from newSubscriber, but got: %v", err)
+		return
+	}
+
+	s.subscriptionArn = aws.String("testSubscriptionArn")
+	snsMock.stubbedUnsubscribeError = errors.New("test error")
+	actualErr := s.DeleteSubscription()
+	actualSubsArn := *snsMock.spiedUnsubscribeInput.SubscriptionArn
+	expectedSubsArn := *s.subscriptionArn
+
+	// verify that DeleteSubscription cathes errors
+	if actualErr != snsMock.stubbedUnsubscribeError {
+		t.Errorf("expected error %v, but got %v", snsMock.stubbedUnsubscribeError, actualErr)
+	}
+
+	// verify that the queueUrls match
+	if expectedSubsArn != actualSubsArn {
+		t.Errorf("AWS subscription arn was incorrect, expected: \"%s\", actual: \"%s\"", expectedSubsArn, actualSubsArn)
+	}
+
+	// verify that DeleteSubscription passes successfully
+	snsMock.stubbedUnsubscribeError = nil
 	actualErr = s.DeleteSubscription()
 	if actualErr != nil {
 		t.Errorf("expected no error from DeleteSubscription, but got: %v", actualErr)

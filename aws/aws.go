@@ -65,9 +65,10 @@ func VerifyPermissions(sess *session.Session) error {
 // verifyPermissions checks if the aws config has correct permissions
 func verifyPermissions(subscriber *awsSubscriber, publisher *publisher) error {
 	defer func() {
-		// Delete publisher topic and subscriber queue
+		// Delete subscription and subscriber queue
 		log.Println("verify permissions: deleting subscription")
 		subscriber.DeleteSubscription()
+		subscriber.DeleteQueue()
 	}()
 
 	ctx, stop := context.WithTimeout(context.Background(), 1*time.Second)
