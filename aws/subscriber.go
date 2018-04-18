@@ -230,7 +230,10 @@ func (s *awsSubscriber) ensureFilterPolicy(filter map[string]string) error {
 		*/
 		if len(filter) == 0 {
 			log.Printf("AWS: clearing filter policy for topic %q, subID %q", s.topic, s.subscriptionID)
-			s.DeleteSubscription()
+			err := s.DeleteSubscription()
+			if err != nil {
+				return err
+			}
 			resp, err := s.sns.Subscribe(&sns.SubscribeInput{
 				Protocol: aws.String("sqs"),
 				TopicArn: s.topicArn,
