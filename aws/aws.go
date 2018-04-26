@@ -330,30 +330,27 @@ func decodeFromSQSMessage(sqsMessage *string) ([]byte, error) {
 }
 
 // decodeMessageAttributes returns the metadata from the sqsMessage body
-func decodeMessageAttributes(sqsMessage *string) map[string]string {
+func decodeMessageAttributes(sqsMessage *string) (map[string]string, error) {
 	decoded := map[string]string{}
-	var messageBody map[string]*json.RawMessage
+	if sqsMessage == nil || *sqsMessage == "" {
+		return decoded, nil
+	}
+	var messageBody struct {
+		MessageAttributes map[string]struct {
+			Type  string
+			Value string
+		}
+	}
 	if err := json.Unmarshal([]byte(*sqsMessage), &messageBody); err != nil {
-		log.Printf("AWS: error parsing SQS message attributes: %v", err)
-		return decoded
+		return nil, err
 	}
-	var messageAttributes map[string]*json.RawMessage
-	if err := json.Unmarshal(*messageBody["MessageAttributes"], &messageAttributes); err != nil {
-		log.Printf("AWS: error parsing through message attributes: %v", err)
-		return decoded
+	if messageBody.MessageAttributes == nil {
+		return decoded, nil
 	}
-	for key, value := range messageAttributes {
-		uv := new(struct {
-			Type  string `json:"Type"`
-			Value string `json: "Value"`
-		})
-		if err := json.Unmarshal(*value, &uv); err != nil {
-			log.Print(err)
-			continue
-		}
-		if uv.Type == "String" {
-			decoded[key] = uv.Value
+	for key, value := range messageBody.MessageAttributes {
+		if value.Type == "String" {
+			decoded[key] = value.Value
 		}
 	}
-	return decoded
+	return decoded, nil
 }
