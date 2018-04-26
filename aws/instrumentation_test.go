@@ -269,7 +269,10 @@ func TestWrapIntoSQSMessage(t *testing.T) {
 		}
 	}
 	{ // verify metadata
-		actualMd := decodeMessageAttributes(msg.Body)
+		actualMd, err := decodeMessageAttributes(msg.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if !reflect.DeepEqual(expectedMd, actualMd) {
 			t.Errorf("expected %q, got %q", expected, actualMd)
 		}

@@ -313,10 +313,35 @@ func TestEncodeMessageAttributes(t *testing.T) {
 }
 
 func TestDecodeMessageAttributes(t *testing.T) {
-	expected := map[string]string{"foo": "bar"}
-	msg := mustWrapIntoSQSMessage(t, nil, nil, expected)
-	actual := decodeMessageAttributes(msg.Body)
-	if !reflect.DeepEqual(expected, actual) {
-		t.Errorf("expected decoded metadata to be %v, but was %v", expected, actual)
+	tests := []struct {
+		input     *string
+		expected  map[string]string
+		expectErr bool
+	}{
+		{input: nil, expected: make(map[string]string)},
+		{input: aws.String(``), expected: make(map[string]string)},
+		{input: aws.String(`{}`), expected: make(map[string]string)},
+		{input: aws.String(`{"SomeUnrelatedThing": "SomeUnrelatedValue"}`), expected: make(map[string]string)},
+		{input: aws.String(`{"MessageAttributes":{}}`), expected: make(map[string]string)},
+		{input: aws.String(`{"MessageAttributes":{"foo":{}}}`), expected: make(map[string]string)},
+		{input: aws.String(`{"MessageAttributes":{"foo":{"Type":"NotString", "Value":"bar"}}}`), expected: make(map[string]string)},
+		{input: aws.String(`{"MessageAttributes":{"foo":{"Type":"String", "Value":""}}}`), expected: map[string]string{"foo": ""}},
+		{input: aws.String(`{"MessageAttributes":{"foo":{"Type":"String"}}}`), expected: map[string]string{"foo": ""}},
+		{input: aws.String(`{"MessageAttributes":{"foo":{"Type":"String", "Value":"bar"}}}`), expected: map[string]string{"foo": "bar"}},
+		{input: aws.String(`{"MessageAttributes":{"foo":{"Type":"", "Value":"bar"}}}`), expected: make(map[string]string)},
+		{input: aws.String(`{"MessageAttributes":{"foo":{"Value":"bar"}}}`), expected: make(map[string]string)},
+		{input: aws.String("some malformed thing"), expectErr: true},
+		{input: aws.String(`{"MessageAttributes":some malformed thing}`), expectErr: true},
+		{input: aws.String(`{"MessageAttributes":"not a map"}`), expectErr: true},
+	}
+	for _, testCase := range tests {
+		expected := testCase.expected
+		actual, err := decodeMessageAttributes(testCase.input)
+		if (err != nil) != testCase.expectErr {
+			t.Errorf("expected to get error: %v, actual error: %v", testCase.expectErr, err)
+		}
+		if !reflect.DeepEqual(expected, actual) {
+			t.Errorf("expected decoded message attributes to be %v, but was %v", expected, actual)
+		}
 	}
 }

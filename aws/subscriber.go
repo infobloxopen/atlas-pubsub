@@ -280,6 +280,13 @@ func (s *awsSubscriber) pull(ctx context.Context, channel chan pubsub.Message, e
 	for _, msg := range resp.Messages {
 		message, err := decodeFromSQSMessage(msg.Body)
 		if err != nil {
+			log.Printf("AWS: error parsing SQS message body: %v", err)
+			errChannel <- err
+			continue
+		}
+		attributes, err := decodeMessageAttributes(msg.Body)
+		if err != nil {
+			log.Printf("AWS: error parsing SQS message attributes: %v", err)
 			errChannel <- err
 			continue
 		}
@@ -288,7 +295,7 @@ func (s *awsSubscriber) pull(ctx context.Context, channel chan pubsub.Message, e
 			subscriber: s,
 			messageID:  *msg.ReceiptHandle,
 			message:    message,
-			metadata:   decodeMessageAttributes(msg.Body),
+			metadata:   attributes,
 		}
 	}
 }
