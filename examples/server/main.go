@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	pubsub "github.com/infobloxopen/atlas-pubsub"
@@ -21,6 +22,9 @@ var port = flag.String("p", "8080", "the port to listen to")
 
 func main() {
 	flag.Parse()
+	if e := os.Getenv("PUBSUB_PORT"); e != "" {
+		port = &e
+	}
 
 	log.Printf("starting aws pubsub server on port %s", *port)
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", *port))

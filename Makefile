@@ -18,9 +18,12 @@ BINDIR = $(CURDIR)/bin
 
 # Utility docker image to generate Go files from .proto definition.
 # https://github.com/infobloxopen/buildtool
-BUILDTOOL_IMAGE := infoblox/buildtool:v2
+BUILDTOOL_IMAGE := infoblox/buildtool
 DEFAULT_REGISTRY := infobloxcto
 REGISTRY ?=$(DEFAULT_REGISTRY)
+
+# Buildtool
+BUILDER := docker run --rm -v $(CURDIR):/go/src/$(REPO) -w /go/src/$(REPO) $(BUILDTOOL_IMAGE)
 
 IMAGE_NAME := $(REGISTRY)/$(APP_NAME):$(VERSION)
 IMAGE_NAME_PUB := $(REGISTRY)/$(APP_NAME)-pub:$(VERSION)
@@ -29,12 +32,12 @@ IMAGE_NAME_SUB := $(REGISTRY)/$(APP_NAME)-sub:$(VERSION)
 default: build
 
 build: fmt bin
-	GOOS=linux go build -o "$(BINDIR)/$(BIN)" "$(SRCDIR)"
+	@$(BUILDER) go build $(GO_BUILD_FLAGS) -o "bin/$(BIN)" "$(SRCDIR)"
 
 # Builds example hello publisher and subscriber
 build-example: fmt bin build 
-	GOOS=linux go build -o "$(BINDIR)/$(BIN)-pub" "$(REPO)/examples/hello/publisher"
-	GOOS=linux go build -o "$(BINDIR)/$(BIN)-sub" "$(REPO)/examples/hello/subscriber"
+	@$(BUILDER) go build $(GO_BUILD_FLAGS) -o "bin/$(BIN)-pub" "$(REPO)/examples/hello/publisher"
+	@$(BUILDER) go build $(GO_BUILD_FLAGS) -o "bin/$(BIN)-sub" "$(REPO)/examples/hello/subscriber"
 
 # formats the repo
 fmt:
