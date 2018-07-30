@@ -2,7 +2,7 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: pubsub
-  namespace: atlas
+  namespace: $PUBSUB_NAMESPACE
 spec:
   replicas: 1
   template:
@@ -24,12 +24,14 @@ spec:
         args: [
             "debug"
          ]
+      nodeSelector:
+        type: vanilla
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: pubsub
-  namespace: atlas
+  namespace: $PUBSUB_NAMESPACE
 spec:
   ports:
     - name: grpc
