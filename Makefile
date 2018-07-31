@@ -21,6 +21,8 @@ BINDIR = $(CURDIR)/bin
 BUILDTOOL_IMAGE := infoblox/buildtool
 DEFAULT_REGISTRY := infobloxcto
 REGISTRY ?=$(DEFAULT_REGISTRY)
+DEFAULT_NAMESPACE := atlas
+PUBSUB_NAMESPACE ?=$(DEFAULT_NAMESPACE)
 
 # Buildtool
 BUILDER := docker run --rm -v $(CURDIR):/go/src/$(REPO) -w /go/src/$(REPO) $(BUILDTOOL_IMAGE)
@@ -89,24 +91,24 @@ test:
 
 # --- Kuberenetes deployment ---
 # Deploy the pubsub service in kubernetes
-deploy-server:
-	@kubectl create -f deploy/pubsub.yaml
+deploy-server: 
+	cat deploy/pubsub.yaml | sed 's/\$$PUBSUB_NAMESPACE/$(PUBSUB_NAMESPACE)/g' | @kubectl create -f -
 
 # Deployes the hello example publisher and subscriber 
 deploy-example:
-	@kubectl create -f deploy/pubsub-pub.yaml
+	cat deploy/pubsub-pub.yaml | sed 's/\$$PUBSUB_NAMESPACE/$(PUBSUB_NAMESPACE)/g' | @kubectl create -f -
 
-	@kubectl create -f deploy/pubsub-sub.yaml
+	cat deploy/pubsub-sub.yaml | sed 's/\$$PUBSUB_NAMESPACE/$(PUBSUB_NAMESPACE)/g' | @kubectl create -f -
 
 # Removes the kubernetes pod
 remove:
-	@kubectl delete -f deploy/pubsub.yaml
+	cat deploy/pubsub.yaml | sed 's/\$$PUBSUB_NAMESPACE/$(PUBSUB_NAMESPACE)/g' | @kubectl delete -f -
 
 # Removes the example hello publisher and subscriber pods
 remove-example:
-	@kubectl delete -f deploy/pubsub-pub.yaml
+	cat deploy/pubsub-pub.yaml | sed 's/\$$PUBSUB_NAMESPACE/$(PUBSUB_NAMESPACE)/g' | @kubectl delete -f -
 
-	@kubectl delete -f deploy/pubsub-sub.yaml
+	cat deploy/pubsub-sub.yaml | sed 's/\$$PUBSUB_NAMESPACE/$(PUBSUB_NAMESPACE)/g' | @kubectl delete -f -
 
 vendor:
 	glide update -v
