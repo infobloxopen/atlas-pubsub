@@ -2,7 +2,7 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: pubsub-pub
-  namespace: atlas
+  namespace: $PUBSUB_NAMESPACE
 spec:
   replicas: 1
   template:
@@ -19,6 +19,9 @@ spec:
           - name: grpc
             containerPort: 80
         args: [
-            "-url=pubsub.atlas.svc:80",
+            "-url=pubsub.$PUBSUB_NAMESPACE.svc:80",
+            "-topic=hello_test",
             "debug"
          ]
+      nodeSelector:
+        type: vanilla
