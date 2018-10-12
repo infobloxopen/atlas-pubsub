@@ -10,3 +10,20 @@ All SQS queues are prefixed with `pubsub__<topic>_`
 The SNS topics and SQS queues are created on-demand whenever the topic is first published or subscribed to.
 
 Two subscribers to the same topic with the same subscriptionID will share messages from the same message queue.
+
+## Required AWS Permissions
+*SNS*
+* CreateTopic
+* Subscribe
+* Unsubscribe
+* Publish
+* GetSubscriptionAttributes
+* SetSubscriptionAttributes
+ 
+*SQS*
+* GetQueueUrl
+* CreateQueue
+* GetQueueAttributes
+* SetQueueAttributes
+* ReceiveMessage
+* DeleteMessage
