@@ -1,8 +1,18 @@
-FROM alpine:3.5
+# build the server binary
+FROM golang:1.10.0 AS builder
+LABEL stage=intermediate
+WORKDIR /go/src/github.com/infobloxopen/atlas-pubsub
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o pubsub-sub ./examples/hello/subscriber
 
-COPY bin/pubsub-sub /usr/local/bin/pubsub-sub
+
+# run the server binary
+FROM alpine:latest AS runner
+WORKDIR /usr/local/bin
+
+COPY --from=builder /go/src/github.com/infobloxopen/atlas-pubsub/pubsub-sub .
 
 # Allows to verify certificates
 RUN apk update --no-cache && apk add --no-cache ca-certificates
 
-ENTRYPOINT ["/usr/local/bin/pubsub-sub"]
+ENTRYPOINT ["pubsub-sub"]
