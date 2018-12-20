@@ -1,4 +1,4 @@
-VERSION := $(shell git describe --dirty=-dirty --always)
+VERSION := $(shell git describe --dirty=-dirty --always --tags)
 
 APP_NAME := atlas-pubsub
 
@@ -66,7 +66,7 @@ test:
 deploy-server:
 	cat deploy/pubsub.yaml | sed 's/\$$PUBSUB_NAMESPACE/$(PUBSUB_NAMESPACE)/g' | @kubectl create -f -
 
-# Deployes the hello example publisher and subscriber
+# Deploys the hello example publisher and subscriber
 deploy-example:
 	cat deploy/pubsub-pub.yaml | sed 's/\$$PUBSUB_NAMESPACE/$(PUBSUB_NAMESPACE)/g' | @kubectl create -f -
 
