@@ -3,7 +3,7 @@
 
 1. Run the gRPC server provided in this example:
 ```
-cd ~/go/src/github.com/infobloxopen/atlas-pubsub/examples/server/
+cd ~/go/src/github.com/infobloxopen/atlas-pubsub/cmd/
 go run main.go
 ```
 2. In a separate terminal, run the subscriber provided in this example:
