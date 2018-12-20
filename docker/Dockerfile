@@ -13,7 +13,7 @@ WORKDIR /usr/local/bin
 COPY --from=builder /go/src/github.com/infobloxopen/atlas-pubsub/pubsub .
 
 # Allows to verify certificates
-RUN apk update --no-cache && apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates
 
 ENV AWS_REGION us-east-1
 
