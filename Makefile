@@ -1,8 +1,8 @@
 VERSION := $(shell git describe --dirty=-dirty --always)
 
-APP_NAME := atlas.pubsub
+APP_NAME := atlas-pubsub
 
-DEFAULT_REGISTRY := infobloxcto
+DEFAULT_REGISTRY := infoblox
 REGISTRY ?=$(DEFAULT_REGISTRY)
 DEFAULT_NAMESPACE := atlas
 PUBSUB_NAMESPACE ?=$(DEFAULT_NAMESPACE)
