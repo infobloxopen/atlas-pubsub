@@ -1,5 +1,5 @@
 # build the server binary
-FROM golang:1.11.0 AS builder
+FROM golang:1.11 AS builder
 LABEL stage=intermediate
 WORKDIR /go/src/github.com/infobloxopen/atlas-pubsub
 COPY . .
