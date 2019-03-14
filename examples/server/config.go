@@ -32,4 +32,7 @@ var (
 	flagInternalReadiness = pflag.String("internal.readiness", defaultInternalReadiness, "endpoint for readiness checks")
 
 	flagLoggingLevel = pflag.String("logging.level", defaultLoggingLevel, "log level of application")
+
+	flagSnsEndpoint = pflag.String("sns.endpoint", "", "endpoint of SNS service")
+	flagSqsEndpoint = pflag.String("sqs.endpoint", "", "endpoint of SQS service")
 )

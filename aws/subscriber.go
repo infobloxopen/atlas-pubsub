@@ -23,8 +23,8 @@ var ErrAckDeadlineOutOfRange = errors.New("The visibility timeout value is out o
 // the given topic with at-least-once message delivery semantics for the given
 // subscriptionID
 // TODO: info on permissions needed within the config to make this work
-func NewSubscriber(sess *session.Session, topic, subscriptionID string) (pubsub.Subscriber, error) {
-	return newSubscriber(sns.New(sess), sqs.New(sess), topic, subscriptionID)
+func NewSubscriber(snsSess *session.Session, sqsSess *session.Session, topic, subscriptionID string) (pubsub.Subscriber, error) {
+	return newSubscriber(sns.New(snsSess), sqs.New(sqsSess), topic, subscriptionID)
 }
 
 func newSubscriber(snsClient snsiface.SNSAPI, sqsClient sqsiface.SQSAPI, topic, subscriptionID string) (*awsSubscriber, error) {

@@ -10,6 +10,7 @@ import (
 	"net"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/infobloxopen/atlas-app-toolkit/health"
 	"github.com/infobloxopen/atlas-app-toolkit/server"
+
 	pubsub "github.com/infobloxopen/atlas-pubsub"
 	pubsubaws "github.com/infobloxopen/atlas-pubsub/aws"
 	pubsubgrpc "github.com/infobloxopen/atlas-pubsub/grpc"
@@ -44,7 +46,7 @@ func main() {
 	}
 	grpcServer := grpc.NewServer()
 
-	pubsubServer, err := newAWSPubSubServer(logger)
+	pubsubServer, err := getPubSubServer(logger)
 	if err != nil {
 		logger.Fatalf("failed to create aws pubsub server: %v", err)
 	}
@@ -80,6 +82,15 @@ func NewLogger() *logrus.Logger {
 	return logger
 }
 
+func getPubSubServer(logger *logrus.Logger) (pubsubgrpc.PubSubServer, error) {
+
+	snsEndpoint := viper.GetString("sns.endpoint")
+	if snsEndpoint != "" { // Assuming sqsEndpoint also set
+		return newLocalStackPubSubServer(logger)
+	}
+	return newAWSPubSubServer(logger)
+}
+
 // newAWSPubSubServer creates a new grpc PubSub server using the broker
 // implementation for AWS
 func newAWSPubSubServer(logger *logrus.Logger) (pubsubgrpc.PubSubServer, error) {
@@ -98,7 +109,37 @@ func newAWSPubSubServer(logger *logrus.Logger) (pubsubgrpc.PubSubServer, error) 
 		return pubsubaws.NewPublisher(sess, topic)
 	}
 	subFactory := func(ctx context.Context, topic, subscriptionID string) (pubsub.Subscriber, error) {
-		return pubsubaws.NewSubscriber(sess, topic, subscriptionID)
+		return pubsubaws.NewSubscriber(sess, sess, topic, subscriptionID)
+	}
+	return pubsubgrpc.NewPubSubServer(pubFactory, subFactory), nil
+}
+
+// newLocalStackPubSubServer creates a new grpc PubSub server using the broker
+// implementation for LocalStack
+func newLocalStackPubSubServer(logger *logrus.Logger) (pubsubgrpc.PubSubServer, error) {
+	cfg := aws.Config{}
+	// Use below line for debugging purpose
+	// cfg := aws.Config{LogLevel: aws.LogLevel(aws.LogDebugWithHTTPBody)}
+	snsEndpoint := viper.GetString("sns.endpoint")
+	sqsEndpoint := viper.GetString("sqs.endpoint")
+
+	snsSession, err := session.NewSession(cfg.WithEndpoint(snsEndpoint))
+	if err != nil {
+		logger.Errorf("Could not create session with SNS Endpoint: %s", snsEndpoint)
+		return nil, err
+	}
+	sqsSession, err := session.NewSession(cfg.WithEndpoint(sqsEndpoint))
+	if err != nil {
+		logger.Errorf("Could not create session with SQS Endpoint: %s", sqsEndpoint)
+		return nil, err
+	}
+	logger.Printf("SNS Endpoint: %s & SQS Endpoint: %s used to create pubsub server", snsEndpoint, sqsEndpoint)
+
+	pubFactory := func(ctx context.Context, topic string) (pubsub.Publisher, error) {
+		return pubsubaws.NewPublisher(snsSession, topic)
+	}
+	subFactory := func(ctx context.Context, topic, subscriptionID string) (pubsub.Subscriber, error) {
+		return pubsubaws.NewSubscriber(snsSession, sqsSession, topic, subscriptionID)
 	}
 	return pubsubgrpc.NewPubSubServer(pubFactory, subFactory), nil
 }
