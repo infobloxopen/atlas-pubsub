@@ -240,7 +240,7 @@ func TestEncodeFilterPolicy(t *testing.T) {
 		t.Errorf("wasn't expecting error:\n%v", err)
 	}
 	if expected != *actual {
-		t.Errorf("expected: %q\nactual:%q", expected, actual)
+		t.Errorf("expected: %q\nactual:%q", expected, *actual)
 	}
 }
 
