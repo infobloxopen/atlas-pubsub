@@ -19,7 +19,6 @@ import (
 var url = flag.String("url", ":8080", "the grpc url to the pubsub server")
 var topic = flag.String("topic", protobuf.DefaultTopicName, "the topic to subscribe to")
 var subscriptionID = flag.String("subID", protobuf.DefaultSubscriberID, "the subscription ID for the topic")
-var locationFilter = flag.String("location", "", "if present, will only show messages with metadata tagged for the given location")
 
 func main() {
 	flag.Parse()
@@ -30,13 +29,7 @@ func main() {
 	}
 	s := pubsubgrpc.NewSubscriber(*topic, *subscriptionID, conn)
 
-	md := make(map[string]string)
-	if locationFilter != nil && *locationFilter != "" {
-		md["Location"] = *locationFilter
-		log.Printf("Only receiving messages for employees in %q", *locationFilter)
-	}
-
-	c, e := s.Start(context.Background(), pubsub.Filter(md))
+	c, e := s.Start(context.Background(), pubsub.Filter(nil))
 
 	for {
 		select {
@@ -51,8 +44,8 @@ func main() {
 				log.Fatal("Unmarshalling error: ", err)
 			}
 
-			log.Printf("Received message (Unmarshalled): %q %q %q %q", receivedPerson.GetName(), strconv.Itoa(int(receivedPerson.GetAge())), receivedPerson.EmployeeInfo.GetLocation(), receivedPerson.EmployeeInfo.GetTitle())
 			log.Printf("                   (Marshalled): %q", msg.Message())
+			log.Printf("Received message (Unmarshalled): %q %q %q %q", receivedPerson.GetName(), strconv.Itoa(int(receivedPerson.GetAge())), receivedPerson.EmployeeInfo.GetLocation(), receivedPerson.EmployeeInfo.GetTitle())
 			go func() {
 				if err := msg.Ack(); err != nil {
 					log.Fatalf("failed to ack messageID %q: %v", msg.MessageID(), err)

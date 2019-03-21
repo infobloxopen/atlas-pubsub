@@ -45,9 +45,8 @@ func main() {
 		}
 
 		msg := fmt.Sprintf("%s %v %s %s %s", person.Name, person.Age, person.EmployeeInfo.Location, person.EmployeeInfo.Title, time.Now())
-		md := map[string]string{"Location": person.EmployeeInfo.Location}
-		log.Printf("publishing %q %v", msg, md)
-		if err := p.Publish(context.Background(), data, md); err != nil {
+		log.Printf("publishing %q", msg)
+		if err := p.Publish(context.Background(), data, nil); err != nil {
 			log.Printf("error publishing: %v", err)
 			return
 		}
