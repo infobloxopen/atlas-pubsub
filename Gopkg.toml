@@ -41,6 +41,10 @@
   name = "google.golang.org/grpc"
   version = "1.10.0"
 
+[[constraint]]
+  name = "github.com/golang/protobuf"
+  version = "1.0.0"
+
 [prune]
   go-tests = true
   unused-packages = true
