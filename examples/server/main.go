@@ -8,9 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"net/http"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/sirupsen/logrus"
@@ -100,18 +98,10 @@ func ServeInternal(logger *logrus.Logger) error {
 		viper.GetString("internal.health"),
 		viper.GetString("internal.readiness"),
 	)
-	healthChecker.AddLiveness("ping", health.HTTPGetCheck(
-		fmt.Sprint("http://", viper.GetString("internal.address"), ":", viper.GetString("internal.port"), "/ping"), time.Minute),
-	)
 
 	s, err := server.NewServer(
 		// register our health checks
 		server.WithHealthChecks(healthChecker),
-		// this endpoint will be used for our health checks
-		server.WithHandler("/ping", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(200)
-			w.Write([]byte("pong"))
-		})),
 	)
 	if err != nil {
 		return err
