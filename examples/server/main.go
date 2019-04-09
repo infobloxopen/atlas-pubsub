@@ -30,20 +30,24 @@ func main() {
 		go func() { doneC <- ServeInternal(logger) }()
 	}
 
-	log.Printf("starting aws pubsub server on port %s", viper.GetString("server.port"))
+	logger.Printf("starting aws pubsub server on port %s", viper.GetString("server.port"))
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%s", viper.GetString("server.address"), viper.GetString("server.port")))
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		logger.Fatalf("failed to listen: %v", err)
 	}
 	grpcServer := grpc.NewServer()
 
-	pubsubServer, err := newAWSPubSubServer()
+	pubsubServer, err := newAWSPubSubServer(logger)
 	if err != nil {
-		log.Fatalf("failed to create aws pubsub server: %v", err)
+		logger.Fatalf("failed to create aws pubsub server: %v", err)
 	}
 	pubsubgrpc.RegisterPubSubServer(grpcServer, pubsubServer)
 	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		logger.Fatalf("failed to serve: %v", err)
+	}
+
+	if err := <-doneC; err != nil {
+		logger.Fatal(err)
 	}
 }
 
@@ -71,17 +75,17 @@ func NewLogger() *logrus.Logger {
 
 // newAWSPubSubServer creates a new grpc PubSub server using the broker
 // implementation for AWS
-func newAWSPubSubServer() (pubsubgrpc.PubSubServer, error) {
+func newAWSPubSubServer(logger *logrus.Logger) (pubsubgrpc.PubSubServer, error) {
 	sess, err := session.NewSession()
 	if err != nil {
 		return nil, err
 	}
 	// Checks to see if aws config credentials are valid
-	log.Print("checking server for AWS permissions")
+	logger.Print("checking server for AWS permissions")
 	if err := pubsubaws.VerifyPermissions(sess); err != nil {
-		log.Fatalf("AWS permissions check failed: %v", err)
+		logger.Fatalf("AWS permissions check failed: %v", err)
 	}
-	log.Print("server has proper AWS permissions")
+	logger.Print("server has proper AWS permissions")
 
 	pubFactory := func(ctx context.Context, topic string) (pubsub.Publisher, error) {
 		return pubsubaws.NewPublisher(sess, topic)
