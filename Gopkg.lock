@@ -56,7 +56,7 @@
   version = "v1.33.0"
 
 [[projects]]
-  digest = "1:2147aa16e4b3b6841e0b5e5896f59646b28959c9cfe034f8c954015d1f03c41a"
+  digest = "1:489a99067cd08971bd9c1ee0055119ba8febc1429f9200ab0bec68d35e8c4833"
   name = "github.com/golang/protobuf"
   packages = [
     "jsonpb",
@@ -73,8 +73,8 @@
     "ptypes/wrappers",
   ]
   pruneopts = "UT"
-  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
-  version = "v1.1.0"
+  revision = "b5d812f8a3706043e23a9cd5babf2e5423744d30"
+  version = "v1.3.1"
 
 [[projects]]
   digest = "1:8f8811f9be822914c3a25c6a071e93beb4c805d7b026cbf298bc577bc1cc945b"
@@ -117,7 +117,7 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:7b30b136c6163ef0deaaac696fe7391d82f904440cb776a626e87f18f1816623"
+  digest = "1:ebba5e2367ba847419f4fd6a4caa1d45ea74a9922814ddaade5a420fa7ff8c31"
   name = "github.com/infobloxopen/atlas-app-toolkit"
   packages = [
     "errors",
@@ -129,8 +129,8 @@
     "server",
   ]
   pruneopts = "UT"
-  revision = "534a084bf6faeb9f286df0ba98cd9ff73bbc8786"
-  version = "v0.16.2"
+  revision = "d10b6c4b87d43a7802983a938998b53f7c424dc4"
+  version = "v0.17.0"
 
 [[projects]]
   branch = "master"
@@ -254,11 +254,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e18c1645adfe83d66f80d3676040e478895669f9456ca8bafa6a7290656c1b48"
+  digest = "1:cf353a5a9ffb2d6f850e9c773e25388a425a70c270546480427ed069e87b136a"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "81d4e9dc473e5e8c933f2aaeba2a3d81efb9aed2"
+  revision = "4b34438f7a67ee5f45cc6132e2bad873a20324e9"
 
 [[projects]]
   digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
