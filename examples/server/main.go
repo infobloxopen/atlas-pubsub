@@ -23,11 +23,18 @@ import (
 	pubsubgrpc "github.com/infobloxopen/atlas-pubsub/grpc"
 )
 
+var registeredPubSubServer = false
+
+const pubSubNotReadyError = "PubSub Server is not ready!"
+
 func main() {
-	doneC := make(chan error)
 	logger := NewLogger()
 	if viper.GetBool("internal.enable") {
-		go func() { doneC <- ServeInternal(logger) }()
+		go func() {
+			if err := ServeInternal(logger); err != nil {
+				logger.Fatal(err)
+			}
+		}()
 	}
 
 	logger.Printf("starting aws pubsub server on port %s", viper.GetString("server.port"))
@@ -42,12 +49,12 @@ func main() {
 		logger.Fatalf("failed to create aws pubsub server: %v", err)
 	}
 	pubsubgrpc.RegisterPubSubServer(grpcServer, pubsubServer)
+
+	// We just setting global variable, because no race condition consequence is unacceptable
+	registeredPubSubServer = true
+
 	if err := grpcServer.Serve(lis); err != nil {
 		logger.Fatalf("failed to serve: %v", err)
-	}
-
-	if err := <-doneC; err != nil {
-		logger.Fatal(err)
 	}
 }
 
@@ -103,6 +110,8 @@ func ServeInternal(logger *logrus.Logger) error {
 		viper.GetString("internal.readiness"),
 	)
 
+	healthChecker.AddReadiness("PubSub Server ready check", pubSubServerReady)
+
 	s, err := server.NewServer(
 		// register our health checks
 		server.WithHealthChecks(healthChecker),
@@ -134,4 +143,11 @@ func init() {
 	} else {
 		log.Printf("Serving from default values, environment variables, and/or flags")
 	}
+}
+
+func pubSubServerReady() error {
+	if !registeredPubSubServer {
+		return fmt.Errorf(pubSubNotReadyError)
+	}
+	return nil
 }
