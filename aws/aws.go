@@ -29,11 +29,12 @@ const topicNamePrefix = "pubsub__"
 // AWS SQS queue names cannot exceed 80 characters. The naming convention for
 // queues is to have the prefix+topic+subscriptionID, so we have to share these
 // 80 characters between the 3 items.
-const subscriptionIDMaxLength = 40
+const subscriptionIDMaxLength = 20
 
 // AWS SNS topic names can be up to 256 characters, but because of our naming
 // convention we're limited to the total 80-character max of the SQS name length.
-const topicNameMaxLength = 40 - len(topicNamePrefix)
+// For topic name we have 51 character: 80-8(prefix)-1(dash)-20(subscriptionID)
+const topicNameMaxLength = 51 - len(topicNamePrefix)
 
 // ErrVisibilityTimeoutOutOfRange is returned whenever an invalid duration is passed to changeVisibilityTimeout
 var ErrVisibilityTimeoutOutOfRange = errors.New("The visibility timeout value is out of range. Values can be 0 to 43200 seconds")
@@ -46,7 +47,7 @@ var ErrMessageRetentionPeriodOutOfRange = errors.New("The message retention peri
 func VerifyPermissions(sess *session.Session) error {
 	// Check if environment contains aws config
 	topic := "verifyPermissions"
-	subscriptionID := uuid.New().String()
+	subscriptionID := uuid.New().String()[:subscriptionIDMaxLength]
 
 	log.Println("verify permissions: creating subscriber")
 	subscriber, err := newSubscriber(sns.New(sess), sqs.New(sess), topic, subscriptionID)
