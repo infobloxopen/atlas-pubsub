@@ -34,7 +34,7 @@ const subscriptionIDMaxLength = 20
 // AWS SNS topic names can be up to 256 characters, but because of our naming
 // convention we're limited to the total 80-character max of the SQS name length.
 // For topic name we have 51 character: 80-8(prefix)-1(dash)-20(subscriptionID)
-const topicNameMaxLength = 51 - len(topicNamePrefix)
+const topicNameMaxLength = 80 - len(topicNamePrefix) - 1 - subscriptionIDMaxLength
 
 // ErrVisibilityTimeoutOutOfRange is returned whenever an invalid duration is passed to changeVisibilityTimeout
 var ErrVisibilityTimeoutOutOfRange = errors.New("The visibility timeout value is out of range. Values can be 0 to 43200 seconds")
