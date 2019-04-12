@@ -24,6 +24,9 @@
 #   go-tests = true
 #   unused-packages = true
 
+[[constraint]]
+  name = "github.com/infobloxopen/atlas-app-toolkit"
+  version = "v0.17.0"
 
 [[constraint]]
   name = "github.com/aws/aws-sdk-go"
@@ -41,7 +44,8 @@
   name = "google.golang.org/grpc"
   version = "1.10.0"
 
-[[constraint]]
+#should be set as a constraint after dependency will be set to specific verison in toollkit
+[[override]]
   name = "github.com/golang/protobuf"
   version = "1.0.0"
 
