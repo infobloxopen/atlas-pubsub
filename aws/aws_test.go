@@ -101,7 +101,7 @@ func TestBuildAWSQueueName(t *testing.T) {
 		}
 	}
 	{ // verify a successful queue name
-		expectedQueueName := "pubsub__topic-subscriptionID"
+		expectedQueueName := "ps_topic-subscriptionID"
 		actualQueueName, err := buildAWSQueueName("topic", "subscriptionID")
 		if *actualQueueName != expectedQueueName {
 			t.Errorf("expected queuename to be \"%s\", but was \"%s\"", expectedQueueName, *actualQueueName)

@@ -24,7 +24,7 @@ import (
 
 // some arbitrary prefix I came up with to help distinguish between aws broker
 // queues, topics and queues, topics created for other means
-const topicNamePrefix = "pubsub__"
+const topicNamePrefix = "ps_"
 
 // AWS SQS queue names cannot exceed 80 characters. The naming convention for
 // queues is to have the prefix+topic+subscriptionID, so we have to share these
@@ -33,7 +33,8 @@ const subscriptionIDMaxLength = 40
 
 // AWS SNS topic names can be up to 256 characters, but because of our naming
 // convention we're limited to the total 80-character max of the SQS name length.
-const topicNameMaxLength = 40 - len(topicNamePrefix)
+// SQS name consists of <topicNamePrefix> + <topicName> + "-" + <subscriptionID>
+const topicNameMaxLength = 80 - len(topicNamePrefix) - 1 - subscriptionIDMaxLength
 
 // ErrVisibilityTimeoutOutOfRange is returned whenever an invalid duration is passed to changeVisibilityTimeout
 var ErrVisibilityTimeoutOutOfRange = errors.New("The visibility timeout value is out of range. Values can be 0 to 43200 seconds")
@@ -108,7 +109,7 @@ func verifyPermissions(subscriber *awsSubscriber, publisher *publisher) error {
 // this broker's naming convention. Errors will be returned if the topic name is
 // too long.
 //
-// The going convention is that this broker prepends "pubsub__" to any topic
+// The going convention is that this broker prepends "ps_" to any topic
 // name, so that administration of topics and queues created by this aws broker
 // is easier from within the console or through any other management tools
 func buildAWSTopicName(topic string) (*string, error) {
@@ -128,7 +129,7 @@ func buildAWSTopicName(topic string) (*string, error) {
 // The going convention is that the queue name concatenates the aws-formatted
 // topic name with the subscriptionID, separated by a dash.
 //
-// Example: for topic `foo` and subcription `bar`, the queue name would be "pubsub__foo-bar"
+// Example: for topic `foo` and subcription `bar`, the queue name would be "ps_foo-bar"
 //
 // This is useful to prevent queue name clashes between message queues while
 // allowing an easy identifying mechanism for subscribing to a persistent queue.

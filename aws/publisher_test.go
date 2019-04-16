@@ -31,7 +31,7 @@ func TestNewPublisher(t *testing.T) {
 			t.Error("sns.CreateTopic was not called")
 		} else {
 			actual := *spy.spiedCreateTopicInput.Name
-			expected := "pubsub__foo"
+			expected := "ps_foo"
 			if actual != expected {
 				t.Errorf("SNS topic name was incorrect, expected:\"%s\"actual:\"%s\"", expected, actual)
 			}
