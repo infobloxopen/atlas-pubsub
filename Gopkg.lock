@@ -2,7 +2,6 @@
 
 
 [[projects]]
-  digest = "1:1ac1c240e11515b4de97728f40b9b0c6c65c4a4331fab6413ce7c71d3f202aa4"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -33,30 +32,24 @@
     "service/sns/snsiface",
     "service/sqs",
     "service/sqs/sqsiface",
-    "service/sts",
+    "service/sts"
   ]
-  pruneopts = "UT"
   revision = "62465d4996f172ae426fdcec7a6a053062cf8995"
   version = "v1.13.15"
 
 [[projects]]
-  digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
-  pruneopts = "UT"
   revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
   version = "v1.4.7"
 
 [[projects]]
-  digest = "1:db18b69d50d54aadb436b8639e2b55b5ece5f595a601d9eb461fabd998ebb288"
   name = "github.com/go-ini/ini"
   packages = ["."]
-  pruneopts = "UT"
   revision = "6333e38ac20b8949a8dd68baa3650f4dee8f39f0"
   version = "v1.33.0"
 
 [[projects]]
-  digest = "1:489a99067cd08971bd9c1ee0055119ba8febc1429f9200ab0bec68d35e8c4833"
   name = "github.com/golang/protobuf"
   packages = [
     "jsonpb",
@@ -70,35 +63,29 @@
     "ptypes/duration",
     "ptypes/struct",
     "ptypes/timestamp",
-    "ptypes/wrappers",
+    "ptypes/wrappers"
   ]
-  pruneopts = "UT"
   revision = "b5d812f8a3706043e23a9cd5babf2e5423744d30"
   version = "v1.3.1"
 
 [[projects]]
-  digest = "1:8f8811f9be822914c3a25c6a071e93beb4c805d7b026cbf298bc577bc1cc945b"
   name = "github.com/google/uuid"
   packages = ["."]
-  pruneopts = "UT"
   revision = "064e2069ce9c359c118179501254f67d7d37ba24"
   version = "0.2"
 
 [[projects]]
-  digest = "1:3f58ecbaa1f31d1ff694ed17009cf274f4e2078ea435c83b43a144656ce3e54b"
   name = "github.com/grpc-ecosystem/grpc-gateway"
   packages = [
     "internal",
     "protoc-gen-swagger/options",
     "runtime",
-    "utilities",
+    "utilities"
   ]
-  pruneopts = "UT"
   revision = "20f268a412e5b342ebfb1a0eef7c3b7bd6c260ea"
   version = "v1.8.5"
 
 [[projects]]
-  digest = "1:c0d19ab64b32ce9fe5cf4ddceba78d5bc9807f0016db6b1183599da3dcc24d10"
   name = "github.com/hashicorp/hcl"
   packages = [
     ".",
@@ -110,14 +97,12 @@
     "hcl/token",
     "json/parser",
     "json/scanner",
-    "json/token",
+    "json/token"
   ]
-  pruneopts = "UT"
   revision = "8cb6e5b959231cc1119e43259c4a608f9c51a241"
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:ebba5e2367ba847419f4fd6a4caa1d45ea74a9922814ddaade5a420fa7ff8c31"
   name = "github.com/infobloxopen/atlas-app-toolkit"
   packages = [
     "errors",
@@ -126,119 +111,81 @@
     "query",
     "rpc/errdetails",
     "rpc/errfields",
-    "server",
+    "server"
   ]
-  pruneopts = "UT"
   revision = "d10b6c4b87d43a7802983a938998b53f7c424dc4"
   version = "v0.17.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:83c0eee3fb0818c6e6e50d159b7b15ca0e5e98894ae4304a7a037b5b249c773c"
-  name = "github.com/infobloxopen/atlas-pubsub"
-  packages = [
-    ".",
-    "aws",
-    "examples/hello",
-    "examples/protobuf",
-    "grpc",
-  ]
-  pruneopts = "UT"
-  revision = "a40bb6ad9d1297ade7c337fa4d9fd1d280cddeb2"
-
-[[projects]]
-  digest = "1:e22af8c7518e1eab6f2eab2b7d7558927f816262586cd6ed9f349c97a6c285c4"
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
-  pruneopts = "UT"
   revision = "0b12d6b5"
 
 [[projects]]
-  digest = "1:31e761d97c76151dde79e9d28964a812c46efc5baee4085b86f68f0c654450de"
   name = "github.com/konsorten/go-windows-terminal-sequences"
   packages = ["."]
-  pruneopts = "UT"
   revision = "f55edac94c9bbba5d6182a4be46d86a2c9b5b50e"
   version = "v1.0.2"
 
 [[projects]]
-  digest = "1:c568d7727aa262c32bdf8a3f7db83614f7af0ed661474b24588de635c20024c7"
   name = "github.com/magiconair/properties"
   packages = ["."]
-  pruneopts = "UT"
   revision = "c2353362d570a7bfa228149c62842019201cfb71"
   version = "v1.8.0"
 
 [[projects]]
-  digest = "1:53bc4cd4914cd7cd52139990d5170d6dc99067ae31c56530621b18b35fc30318"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
-  pruneopts = "UT"
   revision = "3536a929edddb9a5b34bd6861dc4a9647cb459fe"
   version = "v1.1.2"
 
 [[projects]]
-  digest = "1:e0f50a07c0def90588d69f77178712c6fdc67eb6576365f551cce98b44b501bf"
   name = "github.com/pelletier/go-toml"
   packages = ["."]
-  pruneopts = "UT"
   revision = "63909f0a90ab0f36909e8e044e46ace10cf13ba2"
   version = "v1.3.0"
 
 [[projects]]
-  digest = "1:fd61cf4ae1953d55df708acb6b91492d538f49c305b364a014049914495db426"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
-  pruneopts = "UT"
   revision = "8bdbc7bcc01dcbb8ec23dc8a28e332258d25251f"
   version = "v1.4.1"
 
 [[projects]]
-  digest = "1:bb495ec276ab82d3dd08504bbc0594a65de8c3b22c6f2aaa92d05b73fbf3a82e"
   name = "github.com/spf13/afero"
   packages = [
     ".",
-    "mem",
+    "mem"
   ]
-  pruneopts = "UT"
   revision = "588a75ec4f32903aa5e39a2619ba6a4631e28424"
   version = "v1.2.2"
 
 [[projects]]
-  digest = "1:08d65904057412fc0270fc4812a1c90c594186819243160dc779a402d4b6d0bc"
   name = "github.com/spf13/cast"
   packages = ["."]
-  pruneopts = "UT"
   revision = "8c9545af88b134710ab1cd196795e7f2388358d7"
   version = "v1.3.0"
 
 [[projects]]
-  digest = "1:1b753ec16506f5864d26a28b43703c58831255059644351bbcb019b843950900"
   name = "github.com/spf13/jwalterweatherman"
   packages = ["."]
-  pruneopts = "UT"
   revision = "94f6ae3ed3bceceafa716478c5fbf8d29ca601a1"
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:c1b1102241e7f645bc8e0c22ae352e8f0dc6484b6cb4d132fa9f24174e0119e2"
   name = "github.com/spf13/pflag"
   packages = ["."]
-  pruneopts = "UT"
   revision = "298182f68c66c05229eb03ac171abe6e309ee79a"
   version = "v1.0.3"
 
 [[projects]]
-  digest = "1:1b773526998f3dbde3a51a4a5881680c4d237d3600f570d900f97ac93c7ba0a8"
   name = "github.com/spf13/viper"
   packages = ["."]
-  pruneopts = "UT"
   revision = "9e56dacc08fbbf8c9ee2dbc717553c758ce42bc9"
   version = "v1.3.2"
 
 [[projects]]
   branch = "master"
-  digest = "1:279284b3cc1429d8ea79402792b17c5dbfadd583ec4963db69f0368762f89be4"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -247,21 +194,17 @@
     "idna",
     "internal/timeseries",
     "lex/httplex",
-    "trace",
+    "trace"
   ]
-  pruneopts = "UT"
   revision = "e0c57d8f86c17f0724497efcb3bc617e82834821"
 
 [[projects]]
   branch = "master"
-  digest = "1:cf353a5a9ffb2d6f850e9c773e25388a425a70c270546480427ed069e87b136a"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  pruneopts = "UT"
   revision = "4b34438f7a67ee5f45cc6132e2bad873a20324e9"
 
 [[projects]]
-  digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
   name = "golang.org/x/text"
   packages = [
     "collate",
@@ -277,27 +220,23 @@
     "unicode/bidi",
     "unicode/cldr",
     "unicode/norm",
-    "unicode/rangetable",
+    "unicode/rangetable"
   ]
-  pruneopts = "UT"
   revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
   version = "v0.3.0"
 
 [[projects]]
   branch = "master"
-  digest = "1:c745ada5abcd2339c0cebdfc937b90f3146c96b3bf58cb01fe0d5e8b0767559c"
   name = "google.golang.org/genproto"
   packages = [
     "googleapis/api/httpbody",
     "googleapis/rpc/code",
     "googleapis/rpc/status",
-    "protobuf/field_mask",
+    "protobuf/field_mask"
   ]
-  pruneopts = "UT"
   revision = "df60624c1e9b9d2973e889c7a1cff73155da81c4"
 
 [[projects]]
-  digest = "1:c00eb80d7b152379c3e94c38d82b29deca98b1d0f53e4e20362589b7fcbffa07"
   name = "google.golang.org/grpc"
   packages = [
     ".",
@@ -330,47 +269,20 @@
     "resolver/passthrough",
     "stats",
     "status",
-    "tap",
+    "tap"
   ]
-  pruneopts = "UT"
   revision = "3507fb8e1a5ad030303c106fef3a47c9fdad16ad"
   version = "v1.19.1"
 
 [[projects]]
-  digest = "1:4d2e5a73dc1500038e504a8d78b986630e3626dc027bc030ba5c75da257cdb96"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  pruneopts = "UT"
   revision = "51d6538a90f86fe93ac480b35f37b2be17fef232"
   version = "v2.2.2"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  input-imports = [
-    "github.com/aws/aws-sdk-go/aws",
-    "github.com/aws/aws-sdk-go/aws/awserr",
-    "github.com/aws/aws-sdk-go/aws/request",
-    "github.com/aws/aws-sdk-go/aws/session",
-    "github.com/aws/aws-sdk-go/service/sns",
-    "github.com/aws/aws-sdk-go/service/sns/snsiface",
-    "github.com/aws/aws-sdk-go/service/sqs",
-    "github.com/aws/aws-sdk-go/service/sqs/sqsiface",
-    "github.com/golang/protobuf/proto",
-    "github.com/golang/protobuf/ptypes/wrappers",
-    "github.com/google/uuid",
-    "github.com/infobloxopen/atlas-app-toolkit/health",
-    "github.com/infobloxopen/atlas-app-toolkit/server",
-    "github.com/infobloxopen/atlas-pubsub",
-    "github.com/infobloxopen/atlas-pubsub/aws",
-    "github.com/infobloxopen/atlas-pubsub/examples/hello",
-    "github.com/infobloxopen/atlas-pubsub/examples/protobuf",
-    "github.com/infobloxopen/atlas-pubsub/grpc",
-    "github.com/sirupsen/logrus",
-    "github.com/spf13/pflag",
-    "github.com/spf13/viper",
-    "golang.org/x/net/context",
-    "google.golang.org/grpc",
-  ]
+  inputs-digest = "1ed410f7270cfff5007a064c3a6240bdbe7e0a4e87f4f74ff3e14b618bf25bbf"
   solver-name = "gps-cdcl"
   solver-version = 1
