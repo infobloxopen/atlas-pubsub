@@ -27,6 +27,9 @@ import (
 
 var registeredPubSubServer = false
 
+// GetPubSubServer is declared here so that its mockable
+var GetPubSubServer = getPubSubServer
+
 const pubSubNotReadyError = "PubSub Server is not ready!"
 
 func main() {
@@ -46,7 +49,7 @@ func main() {
 	}
 	grpcServer := grpc.NewServer()
 
-	pubsubServer, err := getPubSubServer(logger)
+	pubsubServer, err := GetPubSubServer(logger)
 	if err != nil {
 		logger.Fatalf("failed to create aws pubsub server: %v", err)
 	}
