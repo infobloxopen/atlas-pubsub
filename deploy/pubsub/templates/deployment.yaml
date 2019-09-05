@@ -1,0 +1,57 @@
+{{ if eq .Values.rbac.enabled true }}
+  {{- toYaml .Values.rbac.details }}
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: pubsub
+  namespace: {{ .Release.Namespace }}
+imagePullSecrets:
+- name: {{ tpl .Values.imagePullSecretsName . }}
+{{ end }}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ include "pubsub.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "pubsub.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+  {{- if eq .Values.rbac.enabled true }}
+      serviceAccountName: pubsub
+  {{- end }}
+      containers:
+        - name: pubsub-server
+          image: {{ .Values.image.repository }}/{{ .Values.image.name }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+          - name: AWS_REGION
+            value: {{ .Values.service.aws_region }}
+          ports:
+            - name: grpc
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          args: [
+              {{ .Values.service.logging_level | quote }}
+            ]
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pubsub
+  namespace: {{ .Release.Namespace }}
+spec:
+  ports:
+    - name: grpc
+      port: 80
+      targetPort: {{ .Values.service.port }}
+  selector:
+    app: pubsub
