@@ -22,6 +22,12 @@ type mockPubSubClient struct {
 
 	spiedAckRequest *AckRequest
 	stubbedAckError error
+
+	spiedDeleteTopicRequest *DeleteTopicRequest
+	stubbedDeleteTopicError error
+
+	spiedDeleteSubscriptionRequest *DeleteSubscriptionRequest
+	stubbedDeleteSubscriptionError error
 }
 
 func (c *mockPubSubClient) Publish(ctx context.Context, in *PublishRequest, opts ...grpc.CallOption) (*PublishResponse, error) {
@@ -36,6 +42,16 @@ func (c *mockPubSubClient) Subscribe(ctx context.Context, in *SubscribeRequest, 
 func (c *mockPubSubClient) Ack(ctx context.Context, in *AckRequest, opts ...grpc.CallOption) (*AckResponse, error) {
 	c.spiedAckRequest = in
 	return nil, c.stubbedAckError
+}
+
+func (c *mockPubSubClient) DeleteTopic(ctx context.Context, in *DeleteTopicRequest, opts ...grpc.CallOption) (*DeleteTopicResponse, error) {
+	c.spiedDeleteTopicRequest = in
+	return nil, c.stubbedDeleteTopicError
+}
+
+func (c *mockPubSubClient) DeleteSubscription(ctx context.Context, in *DeleteSubscriptionRequest, opts ...grpc.CallOption) (*DeleteSubscriptionResponse, error) {
+	c.spiedDeleteSubscriptionRequest = in
+	return nil, c.stubbedDeleteSubscriptionError
 }
 
 type mockPubSubSubscribeClient struct {
@@ -99,6 +115,31 @@ func TestClientPublish(t *testing.T) {
 		actualMetadata := mc.spiedPublishRequest.GetMetadata()
 		if !reflect.DeepEqual(expectedMetadata, actualMetadata) {
 			t.Errorf("expected metadata to be %v, but was %v", expectedMetadata, actualMetadata)
+		}
+	}
+}
+
+func TestClientDeleteTopic(t *testing.T) {
+	mc := mockPubSubClient{}
+	cw := grpcClientWrapper{
+		topic:  "testTopic",
+		client: &mc,
+	}
+
+	expectedTopic := "testTopic"
+	{ //verify error is forwarded
+		expectedErr := errors.New("test delete topic error")
+		mc.stubbedDeleteTopicError = expectedErr
+		actualErr := cw.DeleteTopic(context.Background())
+		if expectedErr != actualErr {
+			t.Errorf("delete topic error was incorect: \n expected: %v\nactual: %v", expectedErr, actualErr)
+		}
+		mc.stubbedDeleteTopicError = nil
+	}
+	{ // verify topic was passed correctly
+		actualTopic := mc.spiedDeleteTopicRequest.GetTopic()
+		if expectedTopic != actualTopic {
+			t.Errorf("topic was expected to be %q, but was %q", expectedTopic, actualTopic)
 		}
 	}
 }
@@ -200,6 +241,38 @@ func TestClientAck(t *testing.T) {
 		actualMessageID := mc.spiedAckRequest.GetMessageId()
 		if expectedMessageID != actualMessageID {
 			t.Errorf("expected messageID to be %q, but was %q", expectedMessageID, actualMessageID)
+		}
+	}
+}
+
+func TestClientDeleteSubscription(t *testing.T) {
+	mc := mockPubSubClient{}
+	cw := grpcClientWrapper{
+		topic:          "testTopic",
+		subscriptionID: "testSubscriptionID",
+		client:         &mc,
+	}
+
+	expectedTopic, expectedSubscriptionID := cw.topic, cw.subscriptionID
+	{ // verify error is forwarded
+		expectedError := errors.New("test delete subscription error")
+		mc.stubbedDeleteSubscriptionError = expectedError
+		actualError := cw.DeleteSubscription(context.Background())
+		if expectedError != actualError {
+			t.Errorf("delete subscription error was incorect:\nexpected: %v\nactual: %v", expectedError, actualError)
+		}
+	}
+
+	{ // verify topic is forwarded
+		actualTopic := mc.spiedDeleteSubscriptionRequest.GetTopic()
+		if expectedTopic != actualTopic {
+			t.Errorf("topic was expected to be %q, but was %q", expectedTopic, actualTopic)
+		}
+	}
+	{ // verify subscriptionID is forwarded
+		actualSubscriptionID := mc.spiedDeleteSubscriptionRequest.GetSubscriptionId()
+		if expectedSubscriptionID != actualSubscriptionID {
+			t.Errorf("expected subscriptionID to be %q, but was %q", expectedSubscriptionID, actualSubscriptionID)
 		}
 	}
 }

@@ -133,20 +133,6 @@
   version = "v0.17.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:83c0eee3fb0818c6e6e50d159b7b15ca0e5e98894ae4304a7a037b5b249c773c"
-  name = "github.com/infobloxopen/atlas-pubsub"
-  packages = [
-    ".",
-    "aws",
-    "examples/hello",
-    "examples/protobuf",
-    "grpc",
-  ]
-  pruneopts = "UT"
-  revision = "a40bb6ad9d1297ade7c337fa4d9fd1d280cddeb2"
-
-[[projects]]
   digest = "1:e22af8c7518e1eab6f2eab2b7d7558927f816262586cd6ed9f349c97a6c285c4"
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
@@ -361,16 +347,13 @@
     "github.com/google/uuid",
     "github.com/infobloxopen/atlas-app-toolkit/health",
     "github.com/infobloxopen/atlas-app-toolkit/server",
-    "github.com/infobloxopen/atlas-pubsub",
-    "github.com/infobloxopen/atlas-pubsub/aws",
-    "github.com/infobloxopen/atlas-pubsub/examples/hello",
-    "github.com/infobloxopen/atlas-pubsub/examples/protobuf",
-    "github.com/infobloxopen/atlas-pubsub/grpc",
     "github.com/sirupsen/logrus",
     "github.com/spf13/pflag",
     "github.com/spf13/viper",
     "golang.org/x/net/context",
     "google.golang.org/grpc",
+    "google.golang.org/grpc/codes",
+    "google.golang.org/grpc/status",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -2,6 +2,9 @@ package grpc
 
 import (
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"golang.org/x/net/context"
@@ -55,6 +58,7 @@ func (s *grpcWrapper) Subscribe(req *SubscribeRequest, srv PubSub_SubscribeServe
 		return err
 	}
 
+	sigs := registerSignalHandler()
 	ctx, cancel := context.WithCancel(srv.Context())
 	defer cancel()
 	subscriberOptions := []pubsub.Option{}
@@ -75,7 +79,11 @@ func (s *grpcWrapper) Subscribe(req *SubscribeRequest, srv PubSub_SubscribeServe
 	log.Printf("GRPC: starting subscription %v", req)
 	for {
 		select {
+		case sig := <-sigs:
+			log.Printf("GRPC: handle system signal %q, for topic %q, subID %q", sig, req.GetTopic(), req.GetSubscriptionId())
+			return nil
 		case <-srv.Context().Done():
+			log.Printf("GRPC: server context done, for topc %q, subID %q", req.GetTopic(), req.GetSubscriptionId())
 			return nil
 		case msg, isOpen := <-c:
 			if !isOpen {
@@ -108,4 +116,42 @@ func (s *grpcWrapper) Ack(ctx context.Context, req *AckRequest) (*AckResponse, e
 		log.Printf("GRPC: error acking message for topic %q, subID %q, messageID %q: %v", req.GetTopic(), req.GetSubscriptionId(), req.GetMessageId(), err)
 	}
 	return &AckResponse{}, err
+}
+
+func (s *grpcWrapper) DeleteTopic(ctx context.Context, req *DeleteTopicRequest) (*DeleteTopicResponse, error) {
+	subscriber, err := s.publisherFactory(ctx, req.GetTopic())
+	if err != nil {
+		log.Printf("GRPC: error delete topic %q, error %s", req.GetTopic(), err)
+		return &DeleteTopicResponse{}, err
+	}
+
+	if err := subscriber.DeleteTopic(ctx); err != nil {
+		log.Printf("GRPC: error delete topic %q, error %s", req.GetTopic(), err)
+		return &DeleteTopicResponse{}, err
+
+	}
+
+	return &DeleteTopicResponse{}, nil
+}
+
+func (s *grpcWrapper) DeleteSubscription(ctx context.Context, req *DeleteSubscriptionRequest) (*DeleteSubscriptionResponse, error) {
+	subscriber, err := s.subscriberFactory(ctx, req.GetTopic(), req.GetSubscriptionId())
+	if err != nil {
+		log.Printf("GRPC: error delete subscription, topic %q, subscriptionId %q, error %s", req.GetTopic(), req.GetSubscriptionId(), err)
+		return &DeleteSubscriptionResponse{}, err
+	}
+
+	if err := subscriber.DeleteSubscription(ctx); err != nil {
+		log.Printf("GRPC: error delete subscription, topic %q, subscriptionId %q, error %s", req.GetTopic(), req.GetSubscriptionId(), err)
+		return &DeleteSubscriptionResponse{}, err
+	}
+
+	return &DeleteSubscriptionResponse{}, nil
+}
+
+func registerSignalHandler() <-chan os.Signal {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
+
+	return sigs
 }

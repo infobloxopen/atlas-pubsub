@@ -114,8 +114,8 @@ func (s *awsSubscriber) ExtendAckDeadline(ctx context.Context, messageID string,
 	return err
 }
 
-// DeleteQueue removes the subscription queue.
-func (s *awsSubscriber) DeleteQueue() error {
+// deleteQueue removes the subscription queue.
+func (s *awsSubscriber) deleteQueue() error {
 	log.Printf("AWS: deleting SQS queue %q", *s.queueURL)
 	_, err := s.sqs.DeleteQueue(&sqs.DeleteQueueInput{
 		QueueUrl: s.queueURL,
@@ -123,9 +123,23 @@ func (s *awsSubscriber) DeleteQueue() error {
 	return err
 }
 
-// DeleteSubscription unsubscribes the subscription
+func (s *awsSubscriber) DeleteSubscription(ctx context.Context) error {
+	log.Printf("AWS: delete subscription subscriptionID %q, from topic %q", s.subscriptionID, s.topic)
+	if err := s.unsubscribe(); err != nil {
+		return err
+	}
+
+	if err := s.deleteQueue(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// unsubsctribe unsubscribes the subscription
 // If the subscription doesn't exists it will return nil.
-func (s *awsSubscriber) DeleteSubscription() error {
+func (s *awsSubscriber) unsubscribe() error {
+	log.Printf("AWS: unsubscribe subscriptionID %q, from topic %q", s.subscriptionID, s.topic)
 	_, err := s.sns.Unsubscribe(&sns.UnsubscribeInput{
 		SubscriptionArn: s.subscriptionArn,
 	})
@@ -230,7 +244,7 @@ func (s *awsSubscriber) ensureFilterPolicy(filter map[string]string) error {
 		*/
 		if len(filter) == 0 {
 			log.Printf("AWS: clearing filter policy for topic %q, subID %q", s.topic, s.subscriptionID)
-			err := s.DeleteSubscription()
+			err := s.unsubscribe()
 			if err != nil {
 				return err
 			}

@@ -11,6 +11,9 @@ type Publisher interface {
 	// Publishes the given message to the message broker. The topic should be
 	// known to the publisher prior to making this call
 	Publish(context.Context, []byte, map[string]string) error
+
+	//DeleteTopic free all resources associated with topic
+	DeleteTopic(ctx context.Context) error
 }
 
 // Subscriber defines the interface for a subscriber with at-least-
@@ -23,6 +26,9 @@ type Subscriber interface {
 	// ExtendAckDeadline will postpone resending the given in-flight message for
 	// the specified duration
 	ExtendAckDeadline(ctx context.Context, messageID string, newDuration time.Duration) error
+
+	//DeleteSubscription free all resources associated with subscription
+	DeleteSubscription(ctx context.Context) error
 }
 
 // Message contains the payload for a message with at-least-once

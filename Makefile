@@ -31,6 +31,16 @@ IMAGE_NAME := $(REGISTRY)/$(APP_NAME):$(VERSION)
 IMAGE_NAME_PUB := $(REGISTRY)/$(APP_NAME)-pub:$(VERSION)
 IMAGE_NAME_SUB := $(REGISTRY)/$(APP_NAME)-sub:$(VERSION)
 
+PROJECT_ROOT := github.com/infobloxopen/atlas-pubsub
+# configuration for the protobuf gentool
+SRCROOT_ON_HOST      := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
+SRCROOT_IN_CONTAINER := /home/go/src/$(PROJECT_ROOT)
+DOCKERPATH           := /home/go/src
+DOCKER_RUNNER        := docker run --rm
+DOCKER_RUNNER        += -v $(SRCROOT_ON_HOST):$(SRCROOT_IN_CONTAINER)
+DOCKER_GENERATOR     := infoblox/atlas-gentool:v19
+GENERATOR            := $(DOCKER_RUNNER) $(DOCKER_GENERATOR)
+
 default: build
 
 build: fmt bin
@@ -40,6 +50,8 @@ build: fmt bin
 build-example: fmt bin build 
 	@$(BUILDER) go build $(GO_BUILD_FLAGS) -o "bin/$(BIN)-pub" "$(REPO)/examples/hello/publisher"
 	@$(BUILDER) go build $(GO_BUILD_FLAGS) -o "bin/$(BIN)-sub" "$(REPO)/examples/hello/subscriber"
+
+
 
 # formats the repo
 fmt:
@@ -115,3 +127,9 @@ vendor:
 
 temp-create-pubsub:
 	cat pubsub.yaml | envsubst ' $AWS_ACCESS_KEY$AWS_ACCESS_KEY_ID$AWS_SECRET_ACCESS_KEY$AWS_SECRET_KEY'| ks create -f pubsub.yaml
+
+protobuf:
+	$(GENERATOR) \
+		-I/home/go/src/github.com/infobloxopen/atlas-pubsub \
+		--go_out="plugins=grpc:$(SRCROOT_IN_CONTAINER)" \
+	    grpc/server.proto

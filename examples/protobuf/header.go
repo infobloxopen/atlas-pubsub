@@ -14,5 +14,5 @@ var People = []Person{
 
 type Person struct {
 	Name, Location, Title string
-	Age int32
+	Age                   int32
 }

@@ -6,6 +6,7 @@ package grpc
 
 import (
 	"context"
+	fmt "fmt"
 	"time"
 
 	google_protobuf "github.com/golang/protobuf/ptypes/wrappers"
@@ -18,7 +19,7 @@ import (
 // convenience in case you want to operate with go channels instead of
 // interacting with the client directly
 func NewSubscriber(topic, subscriptionID string, conn *grpc.ClientConn) pubsub.Subscriber {
-	return &grpcClientWrapper{topic, subscriptionID, NewPubSubClient(conn)}
+	return &grpcClientWrapper{topic, subscriptionID, NewPubSubClient(conn), make(chan struct{}, 2)}
 }
 
 // NewPublisher returns an implementation of pubsub.Publisher from the
@@ -32,10 +33,21 @@ type grpcClientWrapper struct {
 	topic          string
 	subscriptionID string
 	client         PubSubClient
+	cancel         chan struct{}
 }
 
 func (w *grpcClientWrapper) Publish(ctx context.Context, message []byte, metadata map[string]string) error {
 	_, err := w.client.Publish(ctx, &PublishRequest{Topic: w.topic, Message: message, Metadata: metadata})
+	return err
+}
+
+func (w *grpcClientWrapper) DeleteTopic(ctx context.Context) error {
+	select {
+	case w.cancel <- struct{}{}:
+	case <-time.After(1 * time.Second):
+	}
+
+	_, err := w.client.DeleteTopic(ctx, &DeleteTopicRequest{Topic: w.topic})
 	return err
 }
 
@@ -66,9 +78,13 @@ func (w *grpcClientWrapper) Start(ctx context.Context, opts ...pubsub.Option) (<
 		}
 		for {
 			select {
+			case <-w.cancel:
+				errC <- fmt.Errorf("PUBSUB client: stream closed for subscription %s, topic %s", w.subscriptionID, w.topic)
 			case <-stream.Context().Done():
+				errC <- fmt.Errorf("PUBSUB client: stream closed for subscription %s, topic %s", w.subscriptionID, w.topic)
 				return
 			case <-ctx.Done():
+				errC <- fmt.Errorf("PUBSUB client: context closed for subscription %s, topic %s", w.subscriptionID, w.topic)
 				return
 			default:
 				if msg, err := stream.Recv(); err != nil {
@@ -88,6 +104,16 @@ func (w *grpcClientWrapper) Start(ctx context.Context, opts ...pubsub.Option) (<
 	}()
 
 	return msgC, errC
+}
+
+func (w *grpcClientWrapper) DeleteSubscription(ctx context.Context) error {
+	select {
+	case w.cancel <- struct{}{}:
+	case <-time.After(1 * time.Second):
+	}
+
+	_, err := w.client.DeleteSubscription(ctx, &DeleteSubscriptionRequest{Topic: w.topic, SubscriptionId: w.subscriptionID})
+	return err
 }
 
 func (w *grpcClientWrapper) AckMessage(ctx context.Context, messageID string) error {
