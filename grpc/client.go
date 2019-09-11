@@ -6,6 +6,7 @@ package grpc
 
 import (
 	"context"
+	fmt "fmt"
 	"time"
 
 	google_protobuf "github.com/golang/protobuf/ptypes/wrappers"
@@ -39,6 +40,11 @@ func (w *grpcClientWrapper) Publish(ctx context.Context, message []byte, metadat
 	return err
 }
 
+func (w *grpcClientWrapper) DeleteTopic(ctx context.Context) error {
+	_, err := w.client.DeleteTopic(ctx, &DeleteTopicRequest{Topic: w.topic})
+	return err
+}
+
 func (w *grpcClientWrapper) Start(ctx context.Context, opts ...pubsub.Option) (<-chan pubsub.Message, <-chan error) {
 	// Default Options
 	subscriberOptions := &pubsub.Options{
@@ -67,8 +73,10 @@ func (w *grpcClientWrapper) Start(ctx context.Context, opts ...pubsub.Option) (<
 		for {
 			select {
 			case <-stream.Context().Done():
+				errC <- fmt.Errorf("PUBSUB client: stream closed for subscription %s, topic %s", w.subscriptionID, w.topic)
 				return
 			case <-ctx.Done():
+				errC <- fmt.Errorf("PUBSUB client: context closed for subscription %s, topic %s", w.subscriptionID, w.topic)
 				return
 			default:
 				if msg, err := stream.Recv(); err != nil {
@@ -88,6 +96,11 @@ func (w *grpcClientWrapper) Start(ctx context.Context, opts ...pubsub.Option) (<
 	}()
 
 	return msgC, errC
+}
+
+func (w *grpcClientWrapper) DeleteSubscription(ctx context.Context) error {
+	_, err := w.client.DeleteSubscription(ctx, &DeleteSubscriptionRequest{SubscriptionId: w.subscriptionID})
+	return err
 }
 
 func (w *grpcClientWrapper) AckMessage(ctx context.Context, messageID string) error {
