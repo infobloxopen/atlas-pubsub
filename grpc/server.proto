@@ -37,8 +37,23 @@ message AckRequest {
 
 message AckResponse {}
 
+message DeleteTopicRequest {
+    string topic = 1;
+}
+
+message DeleteTopicResponse {}
+
+message DeleteSubscriptionRequest {
+   string topic = 1;
+   string subscription_id = 2;
+}
+
+message DeleteSubscriptionResponse {}
+
 service PubSub {
   rpc Publish(PublishRequest) returns (PublishResponse) {}
+  rpc DeleteTopic(DeleteTopicRequest) returns (DeleteTopicResponse) {}
   rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse) {}
+  rpc DeleteSubscription(DeleteSubscriptionRequest) returns (DeleteSubscriptionResponse) {}
   rpc Ack(AckRequest) returns (AckResponse) {}
 }

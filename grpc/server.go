@@ -109,3 +109,30 @@ func (s *grpcWrapper) Ack(ctx context.Context, req *AckRequest) (*AckResponse, e
 	}
 	return &AckResponse{}, err
 }
+
+func (s *grpcWrapper) DeleteTopic(ctx context.Context, req *DeleteTopicRequest) (*DeleteTopicResponse, error) {
+	subscriber, err := s.publisherFactory(ctx, req.Topic)
+	if err != nil {
+		return &DeleteTopicResponse{}, err
+	}
+
+	if err := subscriber.DeleteTopic(ctx); err != nil {
+		return &DeleteTopicResponse{}, err
+
+	}
+
+	return &DeleteTopicResponse{}, nil
+}
+
+func (s *grpcWrapper) DeleteSubscription(ctx context.Context, req *DeleteSubscriptionRequest) (*DeleteSubscriptionResponse, error) {
+	subscriber, err := s.subscriberFactory(ctx, req.GetTopic(), req.GetSubscriptionId())
+	if err != nil {
+		return &DeleteSubscriptionResponse{}, err
+	}
+
+	if err := subscriber.DeleteSubscription(ctx); err != nil {
+		return &DeleteSubscriptionResponse{}, nil
+	}
+
+	return &DeleteSubscriptionResponse{}, nil
+}

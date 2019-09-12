@@ -67,8 +67,8 @@ func verifyPermissions(subscriber *awsSubscriber, publisher *publisher) error {
 	defer func() {
 		// Delete subscription and subscriber queue
 		log.Println("verify permissions: deleting subscription")
-		subscriber.DeleteSubscription()
-		subscriber.DeleteQueue()
+		subscriber.unsubscribe()
+		subscriber.deleteQueue()
 	}()
 
 	ctx, stop := context.WithTimeout(context.Background(), 1*time.Second)

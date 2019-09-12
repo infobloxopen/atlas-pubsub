@@ -22,6 +22,12 @@ type mockPubSubClient struct {
 
 	spiedAckRequest *AckRequest
 	stubbedAckError error
+
+	spiedDeleteTopicRequest *DeleteTopicRequest
+	spiedDeleteTopicError   error
+
+	spiedDeleteSubscriptionRequest *DeleteSubscriptionRequest
+	spiedDeleteSubscriptionError   error
 }
 
 func (c *mockPubSubClient) Publish(ctx context.Context, in *PublishRequest, opts ...grpc.CallOption) (*PublishResponse, error) {
@@ -36,6 +42,16 @@ func (c *mockPubSubClient) Subscribe(ctx context.Context, in *SubscribeRequest, 
 func (c *mockPubSubClient) Ack(ctx context.Context, in *AckRequest, opts ...grpc.CallOption) (*AckResponse, error) {
 	c.spiedAckRequest = in
 	return nil, c.stubbedAckError
+}
+
+func (c *mockPubSubClient) DeleteTopic(ctx context.Context, in *DeleteTopicRequest, opts ...grpc.CallOption) (*DeleteTopicResponse, error) {
+	c.spiedDeleteTopicRequest = in
+	return nil, c.spiedDeleteTopicError
+}
+
+func (c *mockPubSubClient) DeleteSubscription(ctx context.Context, in *DeleteSubscriptionRequest, opts ...grpc.CallOption) (*DeleteSubscriptionResponse, error) {
+	c.spiedDeleteSubscriptionRequest = in
+	return nil, c.spiedDeleteSubscriptionError
 }
 
 type mockPubSubSubscribeClient struct {

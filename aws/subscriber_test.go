@@ -245,7 +245,7 @@ func TestDeleteQueue(t *testing.T) {
 
 	s.queueURL = aws.String("testurl")
 	sqsMock.stubbedDeleteQueueError = errors.New("test error")
-	actualErr := s.DeleteQueue()
+	actualErr := s.deleteQueue()
 	actualQueueURL := *sqsMock.spiedDeleteQueueInput.QueueUrl
 	expectedQueueURL := *s.queueURL
 
@@ -261,7 +261,7 @@ func TestDeleteQueue(t *testing.T) {
 
 	// verify that DeleteQueue passes successfully
 	sqsMock.stubbedDeleteQueueError = nil
-	actualErr = s.DeleteQueue()
+	actualErr = s.deleteQueue()
 	if actualErr != nil {
 		t.Errorf("expected no error from DeleteQueue, but got: %v", actualErr)
 	}
@@ -279,7 +279,7 @@ func TestDeleteSubscription(t *testing.T) {
 
 	s.subscriptionArn = aws.String("testSubscriptionArn")
 	snsMock.stubbedUnsubscribeError = errors.New("test error")
-	actualErr := s.DeleteSubscription()
+	actualErr := s.DeleteSubscription(context.Background())
 	actualSubsArn := *snsMock.spiedUnsubscribeInput.SubscriptionArn
 	expectedSubsArn := *s.subscriptionArn
 
@@ -295,7 +295,7 @@ func TestDeleteSubscription(t *testing.T) {
 
 	// verify that DeleteSubscription passes successfully
 	snsMock.stubbedUnsubscribeError = nil
-	actualErr = s.DeleteSubscription()
+	actualErr = s.DeleteSubscription(context.Background())
 	if actualErr != nil {
 		t.Errorf("expected no error from DeleteSubscription, but got: %v", actualErr)
 	}

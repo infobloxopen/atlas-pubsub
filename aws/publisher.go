@@ -55,7 +55,7 @@ func (p publisher) Publish(ctx context.Context, msg []byte, metadata map[string]
 	return publishErr
 }
 
-func (p publisher) DeleteTopic() error {
+func (p publisher) DeleteTopic(ctx context.Context) error {
 	_, err := p.sns.DeleteTopic(&sns.DeleteTopicInput{
 		TopicArn: aws.String(p.topicArn),
 	})

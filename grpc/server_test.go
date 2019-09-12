@@ -27,6 +27,10 @@ func (p *mockPublisher) Publish(ctx context.Context, message []byte, metadata ma
 	return p.stubbedPublishError
 }
 
+func (p *mockPublisher) DeleteTopic(ctx context.Context) error {
+	return nil
+}
+
 func mockPublisherFactory(mock *mockPublisher) PublisherFactory {
 	return func(ctx context.Context, topic string) (pubsub.Publisher, error) {
 		mock.spiedConstructorTopicName = topic
@@ -125,6 +129,10 @@ func (s *mockSubscriber) AckMessage(ctx context.Context, messageID string) error
 	return s.stubbedAckMessageError
 }
 func (s *mockSubscriber) ExtendAckDeadline(ctx context.Context, messageID string, newDuration time.Duration) error {
+	return nil
+}
+
+func (s *mockSubscriber) DeleteSubscription(ctx context.Context) error {
 	return nil
 }
 

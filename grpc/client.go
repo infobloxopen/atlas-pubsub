@@ -19,7 +19,7 @@ import (
 // convenience in case you want to operate with go channels instead of
 // interacting with the client directly
 func NewSubscriber(topic, subscriptionID string, conn *grpc.ClientConn) pubsub.Subscriber {
-	return &grpcClientWrapper{topic, subscriptionID, NewPubSubClient(conn)}
+	return &grpcClientWrapper{topic, subscriptionID, NewPubSubClient(conn), make(chan struct{}, 2)}
 }
 
 // NewPublisher returns an implementation of pubsub.Publisher from the
@@ -33,6 +33,7 @@ type grpcClientWrapper struct {
 	topic          string
 	subscriptionID string
 	client         PubSubClient
+	cancel         chan struct{}
 }
 
 func (w *grpcClientWrapper) Publish(ctx context.Context, message []byte, metadata map[string]string) error {
@@ -41,6 +42,11 @@ func (w *grpcClientWrapper) Publish(ctx context.Context, message []byte, metadat
 }
 
 func (w *grpcClientWrapper) DeleteTopic(ctx context.Context) error {
+	select {
+	case w.cancel <- struct{}{}:
+	case <-time.After(1 * time.Second):
+	}
+
 	_, err := w.client.DeleteTopic(ctx, &DeleteTopicRequest{Topic: w.topic})
 	return err
 }
@@ -72,6 +78,8 @@ func (w *grpcClientWrapper) Start(ctx context.Context, opts ...pubsub.Option) (<
 		}
 		for {
 			select {
+			case <-w.cancel:
+				errC <- fmt.Errorf("PUBSUB client: stream closed for subscription %s, topic %s", w.subscriptionID, w.topic)
 			case <-stream.Context().Done():
 				errC <- fmt.Errorf("PUBSUB client: stream closed for subscription %s, topic %s", w.subscriptionID, w.topic)
 				return
@@ -99,6 +107,11 @@ func (w *grpcClientWrapper) Start(ctx context.Context, opts ...pubsub.Option) (<
 }
 
 func (w *grpcClientWrapper) DeleteSubscription(ctx context.Context) error {
+	select {
+	case w.cancel <- struct{}{}:
+	case <-time.After(1 * time.Second):
+	}
+
 	_, err := w.client.DeleteSubscription(ctx, &DeleteSubscriptionRequest{SubscriptionId: w.subscriptionID})
 	return err
 }
