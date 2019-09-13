@@ -138,6 +138,7 @@ func (s *awsSubscriber) DeleteSubscription(ctx context.Context) error {
 // unsubsctribe unsubscribes the subscription
 // If the subscription doesn't exists it will return nil.
 func (s *awsSubscriber) unsubscribe() error {
+	log.Printf("AWS: unsubscribe subscriptionID %q, from topic %q", s.subscriptionID, s.topic)
 	_, err := s.sns.Unsubscribe(&sns.UnsubscribeInput{
 		SubscriptionArn: s.subscriptionArn,
 	})

@@ -27,7 +27,7 @@ type Subscriber interface {
 	// the specified duration
 	ExtendAckDeadline(ctx context.Context, messageID string, newDuration time.Duration) error
 
-	//DeleteTopic free all resources associated with subscription
+	//DeleteSubscription free all resources associated with subscription
 	DeleteSubscription(ctx context.Context) error
 }
 

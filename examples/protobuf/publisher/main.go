@@ -32,10 +32,10 @@ func main() {
 		g := protobuf.People[i%len(protobuf.People)]
 		person := &Person{
 			Name: g.Name,
-			Age: g.Age,
+			Age:  g.Age,
 			EmployeeInfo: &EmployeeInfo{
 				Location: g.Location,
-				Title: g.Title,
+				Title:    g.Title,
 			},
 		}
 
