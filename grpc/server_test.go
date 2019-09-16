@@ -19,6 +19,8 @@ type mockPublisher struct {
 	spiedPublishMessage  []byte
 	spiedPublishMetadata map[string]string
 	stubbedPublishError  error
+
+	stubbedDeleteTopicError error
 }
 
 func (p *mockPublisher) Publish(ctx context.Context, message []byte, metadata map[string]string) error {
@@ -28,7 +30,7 @@ func (p *mockPublisher) Publish(ctx context.Context, message []byte, metadata ma
 }
 
 func (p *mockPublisher) DeleteTopic(ctx context.Context) error {
-	return nil
+	return p.stubbedDeleteTopicError
 }
 
 func mockPublisherFactory(mock *mockPublisher) PublisherFactory {
@@ -83,6 +85,43 @@ func TestServerPublish(t *testing.T) {
 	}
 }
 
+func TestDeleteTopic(t *testing.T) {
+	mock := &mockPublisher{}
+	server := NewPubSubServer(mockPublisherFactory(mock), nil)
+	deleteTopicRequest := &DeleteTopicRequest{
+		Topic: "testTopic",
+	}
+	{
+		expectedError := errors.New("test constructore error")
+		mock.stubbedConstructorError = expectedError
+
+		_, actualError := server.DeleteTopic(context.Background(), deleteTopicRequest)
+		if expectedError != actualError {
+			t.Errorf("constructor error was incorrect:\nexpected:%v\nactual:%v", expectedError, actualError)
+		}
+		mock.stubbedConstructorError = nil
+	}
+
+	{
+		expectedError := errors.New("test delete topic error")
+		mock.stubbedDeleteTopicError = expectedError
+
+		_, actualError := server.DeleteTopic(context.Background(), deleteTopicRequest)
+		if expectedError != actualError {
+			t.Errorf("delete topic error was incorrect:\nexpected:%v\nactual:%v", expectedError, actualError)
+		}
+
+		mock.stubbedDeleteTopicError = nil
+	}
+
+	{
+		expectedTopic := deleteTopicRequest.GetTopic()
+		if expectedTopic != mock.spiedConstructorTopicName {
+			t.Errorf("expected topic name to be %q, but was %q", expectedTopic, mock.spiedConstructorTopicName)
+		}
+	}
+}
+
 type mockSubscriber struct {
 	spiedConstructorTopicName      string
 	spiedConstructorSubscriptionID string
@@ -97,6 +136,10 @@ type mockSubscriber struct {
 
 	spiedAckMessageMessagID string
 	stubbedAckMessageError  error
+
+	spiedDeleteSubscriptionTopic   string
+	spiedDeleteSubscriptionID      string
+	stubbedDeleteSubscriptionError error
 }
 
 func (s *mockSubscriber) Start(ctx context.Context, opts ...pubsub.Option) (<-chan pubsub.Message, <-chan error) {
@@ -133,7 +176,7 @@ func (s *mockSubscriber) ExtendAckDeadline(ctx context.Context, messageID string
 }
 
 func (s *mockSubscriber) DeleteSubscription(ctx context.Context) error {
-	return nil
+	return s.stubbedDeleteSubscriptionError
 }
 
 func mockSubscriberFactory(mock *mockSubscriber) SubscriberFactory {
@@ -359,4 +402,48 @@ func TestServerAck(t *testing.T) {
 			t.Errorf("ack error was incorrect:\nexpected: %v\nactual: %v", expectedErr, actualErr)
 		}
 	}
+}
+
+func TestDeleteSubscription(t *testing.T) {
+	mock := &mockSubscriber{}
+	server := NewPubSubServer(nil, mockSubscriberFactory(mock))
+	deleteSubscriptionRequest := &DeleteSubscriptionRequest{
+		Topic:          "testTopic",
+		SubscriptionId: "testSubscriptionID",
+	}
+
+	{
+		expectedError := errors.New("test constructor error")
+		mock.stubbedConstructorError = expectedError
+		_, actualError := server.DeleteSubscription(context.Background(), deleteSubscriptionRequest)
+		if expectedError != actualError {
+			t.Errorf("delete subscription error was incorrect:\nexpected: %v\nactual: %v", expectedError, actualError)
+		}
+		mock.stubbedConstructorError = nil
+	}
+	{
+		expectedError := errors.New("test delete subscription error")
+		mock.stubbedDeleteSubscriptionError = expectedError
+		_, actualError := server.DeleteSubscription(context.Background(), deleteSubscriptionRequest)
+		if expectedError != actualError {
+			t.Errorf("delete subscription error was incorrect:\nexpected: %v\nactual: %v", expectedError, actualError)
+		}
+		mock.stubbedDeleteSubscriptionError = nil
+	}
+	{
+		expectedTopic := deleteSubscriptionRequest.Topic
+		expectedSubscriptionID := deleteSubscriptionRequest.SubscriptionId
+
+		actualTopic := mock.spiedConstructorTopicName
+		actualSubscriptionID := mock.spiedConstructorSubscriptionID
+
+		if expectedTopic != actualTopic {
+			t.Errorf("expected topic to be %q, but was %q", expectedTopic, actualTopic)
+		}
+
+		if expectedSubscriptionID != actualSubscriptionID {
+			t.Errorf("expected subscriptionID to be %q, but was %q", expectedSubscriptionID, actualSubscriptionID)
+		}
+	}
+
 }

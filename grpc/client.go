@@ -112,7 +112,7 @@ func (w *grpcClientWrapper) DeleteSubscription(ctx context.Context) error {
 	case <-time.After(1 * time.Second):
 	}
 
-	_, err := w.client.DeleteSubscription(ctx, &DeleteSubscriptionRequest{SubscriptionId: w.subscriptionID})
+	_, err := w.client.DeleteSubscription(ctx, &DeleteSubscriptionRequest{Topic: w.topic, SubscriptionId: w.subscriptionID})
 	return err
 }
 

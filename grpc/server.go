@@ -143,7 +143,7 @@ func (s *grpcWrapper) DeleteSubscription(ctx context.Context, req *DeleteSubscri
 
 	if err := subscriber.DeleteSubscription(ctx); err != nil {
 		log.Printf("GRPC: error delete subscription, topic %q, subscriptionId %q, error %s", req.GetTopic(), req.GetSubscriptionId(), err)
-		return &DeleteSubscriptionResponse{}, nil
+		return &DeleteSubscriptionResponse{}, err
 	}
 
 	return &DeleteSubscriptionResponse{}, nil
