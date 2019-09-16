@@ -2,6 +2,9 @@ package grpc
 
 import (
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"golang.org/x/net/context"
@@ -55,6 +58,7 @@ func (s *grpcWrapper) Subscribe(req *SubscribeRequest, srv PubSub_SubscribeServe
 		return err
 	}
 
+	sigs := registerSignalHandler()
 	ctx, cancel := context.WithCancel(srv.Context())
 	defer cancel()
 	subscriberOptions := []pubsub.Option{}
@@ -75,7 +79,11 @@ func (s *grpcWrapper) Subscribe(req *SubscribeRequest, srv PubSub_SubscribeServe
 	log.Printf("GRPC: starting subscription %v", req)
 	for {
 		select {
+		case sig := <-sigs:
+			log.Printf("GRPC: handle system signal %q, for topic %q, subID %q", sig, req.GetTopic(), req.GetSubscriptionId())
+			return nil
 		case <-srv.Context().Done():
+			log.Printf("GRPC: server context done, for topc %q, subID %q", req.GetTopic(), req.GetSubscriptionId())
 			return nil
 		case msg, isOpen := <-c:
 			if !isOpen {
@@ -139,4 +147,11 @@ func (s *grpcWrapper) DeleteSubscription(ctx context.Context, req *DeleteSubscri
 	}
 
 	return &DeleteSubscriptionResponse{}, nil
+}
+
+func registerSignalHandler() <-chan os.Signal {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
+
+	return sigs
 }
