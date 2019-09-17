@@ -43,6 +43,7 @@ type publisher struct {
 }
 
 func (p publisher) Publish(ctx context.Context, msg []byte, metadata map[string]string) error {
+	log.Printf("AWS: publish to topic %q", p.topicArn)
 	message := encodeToSNSMessage(msg)
 	messageAttributes := encodeMessageAttributes(metadata)
 
@@ -56,6 +57,7 @@ func (p publisher) Publish(ctx context.Context, msg []byte, metadata map[string]
 }
 
 func (p publisher) DeleteTopic(ctx context.Context) error {
+	log.Printf("AWS: delete topic %q", p.topicArn)
 	_, err := p.sns.DeleteTopic(&sns.DeleteTopicInput{
 		TopicArn: aws.String(p.topicArn),
 	})

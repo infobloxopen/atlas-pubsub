@@ -124,6 +124,7 @@ func (s *awsSubscriber) deleteQueue() error {
 }
 
 func (s *awsSubscriber) DeleteSubscription(ctx context.Context) error {
+	log.Printf("AWS: delete subscription subscriptionID %q, from topic %q", s.subscriptionID, s.topic)
 	if err := s.unsubscribe(); err != nil {
 		return err
 	}
