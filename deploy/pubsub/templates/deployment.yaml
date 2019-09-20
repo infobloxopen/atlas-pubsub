@@ -22,7 +22,6 @@ spec:
       labels:
         app.kubernetes.io/name: {{ include "pubsub.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
-        app: pubsub
     spec:
   {{- if eq .Values.rbac.enabled true }}
       serviceAccountName: pubsub
@@ -56,4 +55,5 @@ spec:
       port: 80
       targetPort: {{ .Values.service.port }}
   selector:
-    app: pubsub
+    app.kubernetes.io/name: {{ include "pubsub.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
