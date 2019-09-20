@@ -102,7 +102,7 @@ func TestDeleteTopic(t *testing.T) {
 	}
 
 	snsMock.stubbedDeleteTopicError = errors.New("test error")
-	actualErr := p.DeleteTopic(context.Background())
+	actualErr := p.DeleteTopic()
 	spiedInput := snsMock.spiedDeleteTopicInput
 	expectedTopicArn := p.topicArn
 	actualTopicArn := *spiedInput.TopicArn
@@ -119,7 +119,7 @@ func TestDeleteTopic(t *testing.T) {
 
 	// verify that DeleteTopic passes successfully
 	snsMock.stubbedDeleteTopicError = nil
-	actualErr = p.DeleteTopic(context.Background())
+	actualErr = p.DeleteTopic()
 	if actualErr != nil {
 		t.Errorf("expected no error from DeleteTopic, but got: %v", actualErr)
 	}
