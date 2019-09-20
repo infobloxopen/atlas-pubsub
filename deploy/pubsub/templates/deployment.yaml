@@ -38,7 +38,8 @@ spec:
               containerPort: {{ .Values.service.port }}
               protocol: TCP
           args: [
-              {{ .Values.service.logging_level | quote }}
+              "--logging.level={{ .Values.service.logging_level }}",
+              "--server.port={{ .Values.service.port }}"
             ]
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
@@ -54,4 +55,5 @@ spec:
       port: 80
       targetPort: {{ .Values.service.port }}
   selector:
-    app: pubsub
+    app.kubernetes.io/name: {{ include "pubsub.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
