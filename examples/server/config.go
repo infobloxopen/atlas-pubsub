@@ -9,6 +9,11 @@ const (
 	defaultServerAddress = "0.0.0.0"
 	defaultServerPort    = "5555"
 
+	//Profiler
+	defaultProfilerEnabled = false
+	defaultProfilerAddress = "0.0.0.0"
+	defaultProfilerPort    = "9999"
+
 	// Health
 	defaultInternalEnable    = true
 	defaultInternalAddress   = "0.0.0.0"
@@ -24,6 +29,10 @@ var (
 	// define flag overrides
 	flagServerAddress = pflag.String("server.address", defaultServerAddress, "adress of gRPC server")
 	flagServerPort    = pflag.String("server.port", defaultServerPort, "port of gRPC server")
+
+	flagProfilerEnabled = pflag.Bool("profiler.enable", defaultProfilerEnabled, "enable profiler by default false")
+	flagProfilerAddress = pflag.String("profiler.address", defaultProfilerAddress, "address of profiler server")
+	flagProfilerPort    = pflag.String("profiler.port", defaultProfilerPort, "port of profiler server")
 
 	flagInternalEnable    = pflag.Bool("internal.enable", defaultInternalEnable, "enable internal http server")
 	flagInternalAddress   = pflag.String("internal.address", defaultInternalAddress, "address of internal http server")

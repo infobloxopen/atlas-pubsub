@@ -5,9 +5,12 @@ COPY bin/pubsub /usr/local/bin/pubsub
 # Allows to verify certificates
 RUN apk update --no-cache && apk add --no-cache ca-certificates
 
-ENV AWS_REGION us-east-1 
+ENV AWS_REGION us-east-1
 
 # gRPC port
 EXPOSE 80
+
+# Profiler port
+EXPOSE 9999
 
 ENTRYPOINT ["/usr/local/bin/pubsub"]

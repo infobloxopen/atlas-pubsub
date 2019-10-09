@@ -8,7 +8,11 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"strings"
+
+	//This import has side effect for default server mux
+	_ "net/http/pprof"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/sirupsen/logrus"
@@ -37,6 +41,14 @@ func main() {
 		}()
 	}
 
+	if viper.GetBool("profiler.enable") {
+		go func() {
+			if err := ServeProfiler(logger); err != nil {
+				logger.Fatal(err)
+			}
+		}()
+	}
+
 	logger.Printf("starting aws pubsub server on port %s", viper.GetString("server.port"))
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%s", viper.GetString("server.address"), viper.GetString("server.port")))
 	if err != nil {
@@ -56,6 +68,11 @@ func main() {
 	if err := grpcServer.Serve(lis); err != nil {
 		logger.Fatalf("failed to serve: %v", err)
 	}
+}
+
+func ServeProfiler(logger *logrus.Logger) error {
+	logger.Infof("Server profiler on %s:%s", viper.GetString("profiler.address"), viper.GetString("profiler.port"))
+	return http.ListenAndServe(fmt.Sprintf("%s:%s", viper.GetString("profiler.address"), viper.GetString("profiler.port")), nil)
 }
 
 func NewLogger() *logrus.Logger {
