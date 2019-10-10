@@ -80,6 +80,7 @@ func (w *grpcClientWrapper) Start(ctx context.Context, opts ...pubsub.Option) (<
 			select {
 			case <-w.cancel:
 				errC <- fmt.Errorf("PUBSUB client: stream closed for subscription %s, topic %s", w.subscriptionID, w.topic)
+				return
 			case <-stream.Context().Done():
 				errC <- fmt.Errorf("PUBSUB client: stream closed for subscription %s, topic %s", w.subscriptionID, w.topic)
 				return
