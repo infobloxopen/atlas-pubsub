@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log"
-	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -47,8 +46,6 @@ type awsSubscriber struct {
 	queueArn        *string
 	topicArn        *string
 	subscriptionArn *string
-
-	wg sync.WaitGroup
 }
 
 func (s *awsSubscriber) Start(ctx context.Context, opts ...pubsub.Option) (<-chan pubsub.Message, <-chan error) {
@@ -60,31 +57,42 @@ func (s *awsSubscriber) Start(ctx context.Context, opts ...pubsub.Option) (<-cha
 	for _, opt := range opts {
 		opt(subscriberOptions)
 	}
-	channel := make(chan pubsub.Message)
+	msgChannel := make(chan pubsub.Message)
 	errChannel := make(chan error)
 	go func() {
-		defer close(channel)
+		defer close(msgChannel)
+		defer close(errChannel)
+
 		if fErr := s.ensureFilterPolicy(subscriberOptions.Filter); fErr != nil {
 			errChannel <- fErr
 			return
 		}
+
 		// Set Retention Period and visibility timeout if needed
 		if err := ensureQueueAttributes(s.queueURL, subscriberOptions.RetentionPeriod, subscriberOptions.VisibilityTimeout, s.sqs); err != nil {
 			errChannel <- err
 			return
 		}
+
 		for {
 			select {
 			case <-ctx.Done():
-				s.wg.Wait()
 				return
 			default:
-				s.pull(ctx, channel, errChannel)
+				messages, err := s.pull(ctx)
+				if err != nil {
+					errChannel <- err
+					return
+				}
+
+				for _, msg := range messages {
+					msgChannel <- msg
+				}
 			}
 		}
 	}()
 
-	return channel, errChannel
+	return msgChannel, errChannel
 }
 
 func (s *awsSubscriber) AckMessage(ctx context.Context, messageID string) error {
@@ -278,9 +286,7 @@ func (s *awsSubscriber) ensureFilterPolicy(filter map[string]string) error {
 }
 
 // pull returns the message and error channel for the subscriber
-func (s *awsSubscriber) pull(ctx context.Context, channel chan pubsub.Message, errChannel chan error) {
-	s.wg.Add(1)
-	defer s.wg.Done()
+func (s *awsSubscriber) pull(ctx context.Context) ([]*awsMessage, error) {
 	resp, err := s.sqs.ReceiveMessageWithContext(ctx, &sqs.ReceiveMessageInput{
 		QueueUrl:              s.queueURL,
 		WaitTimeSeconds:       aws.Int64(20),
@@ -288,28 +294,31 @@ func (s *awsSubscriber) pull(ctx context.Context, channel chan pubsub.Message, e
 		MessageAttributeNames: []*string{aws.String("All")},
 	})
 	if err != nil {
-		errChannel <- err
-		return
+		log.Printf("AWS: error while fetching messages %v", err)
+		return nil, err
 	}
+
+	messages := make([]*awsMessage, 0, len(resp.Messages))
 	for _, msg := range resp.Messages {
 		message, err := decodeFromSQSMessage(msg.Body)
 		if err != nil {
 			log.Printf("AWS: error parsing SQS message body: %v", err)
-			errChannel <- err
-			continue
+			return nil, err
 		}
+
 		attributes, err := decodeMessageAttributes(msg.Body)
 		if err != nil {
 			log.Printf("AWS: error parsing SQS message attributes: %v", err)
-			errChannel <- err
-			continue
+			return nil, err
 		}
-		channel <- &awsMessage{
+		messages = append(messages, &awsMessage{
 			ctx:        ctx,
 			subscriber: s,
 			messageID:  *msg.ReceiptHandle,
 			message:    message,
 			metadata:   attributes,
-		}
+		})
 	}
+
+	return messages, nil
 }
