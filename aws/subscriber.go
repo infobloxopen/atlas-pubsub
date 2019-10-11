@@ -58,7 +58,7 @@ func (s *awsSubscriber) Start(ctx context.Context, opts ...pubsub.Option) (<-cha
 		opt(subscriberOptions)
 	}
 	msgChannel := make(chan pubsub.Message)
-	errChannel := make(chan error)
+	errChannel := make(chan error, 1)
 	go func() {
 		defer close(msgChannel)
 		defer close(errChannel)
