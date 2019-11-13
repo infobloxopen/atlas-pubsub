@@ -9,7 +9,7 @@ type Options struct {
 	Filter            map[string]string
 
 	// Other options go here:
-	WithDecoder           bool
+	WithDecoder       func(*string) ([]byte, error)
 
 }
 
@@ -41,8 +41,8 @@ func Filter(filter map[string]string) Option {
 
 // WithDecoder describes a pubsub message coming straight from an AWS SQS formatted message.
 // This message is encoded slightly differently and must use a different decoder function.
-func WithDecoder() Option {
+func WithDecoder(decoder func(*string) ([]byte, error)) Option {
 	return func(args *Options) {
-		args.WithDecoder = true
+		args.WithDecoder = decoder
 	}
 }

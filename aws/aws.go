@@ -329,8 +329,8 @@ func decodeFromSQSMessage(sqsMessage *string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(v.Payload)
 }
 
-// decodeFromSQSMessageAWS takes the sqs.Message.Body and unmarshals it into a []byte
-func decodeFromSQSMessageAWS(sqsMessage *string) ([]byte, error) {
+// decodeFromSQSMessageDecoder takes the sqs.Message.Body and unmarshals it into a []byte
+func decodeFromSQSMessageDecoder(sqsMessage *string) ([]byte, error) {
 	v := new(struct {
 		Payload string `json:"Message"`
 	})

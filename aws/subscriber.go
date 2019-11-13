@@ -59,6 +59,11 @@ func (s *awsSubscriber) Start(ctx context.Context, opts ...pubsub.Option) (<-cha
 	}
 	msgChannel := make(chan pubsub.Message)
 	errChannel := make(chan error, 1)
+	var decoder func (*string) ([]byte, error)
+	decoder = decodeFromSQSMessage
+	if subscriberOptions.WithDecoder != nil {
+		decoder = subscriberOptions.WithDecoder
+	}
 	go func() {
 		defer close(msgChannel)
 		defer close(errChannel)
@@ -79,7 +84,7 @@ func (s *awsSubscriber) Start(ctx context.Context, opts ...pubsub.Option) (<-cha
 			case <-ctx.Done():
 				return
 			default:
-				messages, err := s.pull(ctx, subscriberOptions.WithDecoder)
+				messages, err := s.pull(ctx, decoder)
 				if err != nil {
 					errChannel <- err
 					return
@@ -286,7 +291,7 @@ func (s *awsSubscriber) ensureFilterPolicy(filter map[string]string) error {
 }
 
 // pull returns the message and error channel for the subscriber
-func (s *awsSubscriber) pull(ctx context.Context, withDecoder bool) ([]*awsMessage, error) {
+func (s *awsSubscriber) pull(ctx context.Context, withDecoder func (*string) ([]byte, error)) ([]*awsMessage, error) {
 	resp, err := s.sqs.ReceiveMessageWithContext(ctx, &sqs.ReceiveMessageInput{
 		QueueUrl:              s.queueURL,
 		WaitTimeSeconds:       aws.Int64(20),
@@ -300,22 +305,12 @@ func (s *awsSubscriber) pull(ctx context.Context, withDecoder bool) ([]*awsMessa
 
 	messages := make([]*awsMessage, 0, len(resp.Messages))
 	for _, msg := range resp.Messages {
-		var message []byte
 
-		if withDecoder {
-			message, err = decodeFromSQSMessageAWS(msg.Body)
-			if err != nil {
-				log.Printf("AWS: error parsing SQS message body: %v", err)
-				return nil, err
-			}
-		} else {
-			message, err = decodeFromSQSMessage(msg.Body)
-			if err != nil {
-				log.Printf("AWS: error parsing SQS message body: %v", err)
-				return nil, err
-			}
+		message, err := decodeFromSQSMessageDecoder(msg.Body)
+		if err != nil {
+			log.Printf("AWS: error parsing SQS message body: %v", err)
+			return nil, err
 		}
-
 
 		attributes, err := decodeMessageAttributes(msg.Body)
 		if err != nil {
