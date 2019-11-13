@@ -301,18 +301,21 @@ func (s *awsSubscriber) pull(ctx context.Context, withDecoder bool) ([]*awsMessa
 	messages := make([]*awsMessage, 0, len(resp.Messages))
 	for _, msg := range resp.Messages {
 		var message []byte
-		var err error
 
 		if withDecoder {
 			message, err = decodeFromSQSMessageAWS(msg.Body)
+			if err != nil {
+				log.Printf("AWS: error parsing SQS message body: %v", err)
+				return nil, err
+			}
 		} else {
 			message, err = decodeFromSQSMessage(msg.Body)
+			if err != nil {
+				log.Printf("AWS: error parsing SQS message body: %v", err)
+				return nil, err
+			}
 		}
 
-		if err != nil {
-			log.Printf("AWS: error parsing SQS message body: %v", err)
-			return nil, err
-		}
 
 		attributes, err := decodeMessageAttributes(msg.Body)
 		if err != nil {
