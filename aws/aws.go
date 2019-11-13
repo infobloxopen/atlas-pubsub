@@ -329,6 +329,19 @@ func decodeFromSQSMessage(sqsMessage *string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(v.Payload)
 }
 
+// decodeFromSQSMessageAWS takes the sqs.Message.Body and unmarshals it into a []byte
+func decodeFromSQSMessageAWS(sqsMessage *string) ([]byte, error) {
+	v := new(struct {
+		Payload string `json:"Message"`
+	})
+	umErr := json.Unmarshal([]byte(*sqsMessage), v)
+	if umErr != nil {
+		return nil, umErr
+	}
+
+	return []byte(v.Payload), nil
+}
+
 // decodeMessageAttributes returns the metadata from the sqsMessage body
 func decodeMessageAttributes(sqsMessage *string) (map[string]string, error) {
 	decoded := map[string]string{}

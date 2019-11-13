@@ -9,6 +9,7 @@ type Options struct {
 	Filter            map[string]string
 
 	// Other options go here:
+	FromAWS           bool
 
 }
 
@@ -35,5 +36,13 @@ func RetentionPeriod(timeDuration time.Duration) Option {
 func Filter(filter map[string]string) Option {
 	return func(args *Options) {
 		args.Filter = filter
+	}
+}
+
+// FromAWS describes a pubsub message coming straight from an AWS SQS formatted message.
+// This message is encoded slightly differently and must use a different decoder function.
+func FromAWS() Option {
+	return func(args *Options) {
+		args.FromAWS = true
 	}
 }
