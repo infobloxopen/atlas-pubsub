@@ -79,7 +79,7 @@ func (s *awsSubscriber) Start(ctx context.Context, opts ...pubsub.Option) (<-cha
 			case <-ctx.Done():
 				return
 			default:
-				messages, err := s.pull(ctx, subscriberOptions.FromAWS)
+				messages, err := s.pull(ctx, subscriberOptions.WithDecoder)
 				if err != nil {
 					errChannel <- err
 					return
@@ -286,7 +286,7 @@ func (s *awsSubscriber) ensureFilterPolicy(filter map[string]string) error {
 }
 
 // pull returns the message and error channel for the subscriber
-func (s *awsSubscriber) pull(ctx context.Context, fromAWS bool) ([]*awsMessage, error) {
+func (s *awsSubscriber) pull(ctx context.Context, withDecoder bool) ([]*awsMessage, error) {
 	resp, err := s.sqs.ReceiveMessageWithContext(ctx, &sqs.ReceiveMessageInput{
 		QueueUrl:              s.queueURL,
 		WaitTimeSeconds:       aws.Int64(20),
@@ -303,7 +303,7 @@ func (s *awsSubscriber) pull(ctx context.Context, fromAWS bool) ([]*awsMessage, 
 		var message []byte
 		var err error
 
-		if fromAWS {
+		if withDecoder {
 			message, err = decodeFromSQSMessageAWS(msg.Body)
 		} else {
 			message, err = decodeFromSQSMessage(msg.Body)

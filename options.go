@@ -9,7 +9,7 @@ type Options struct {
 	Filter            map[string]string
 
 	// Other options go here:
-	FromAWS           bool
+	WithDecoder           bool
 
 }
 
@@ -39,10 +39,10 @@ func Filter(filter map[string]string) Option {
 	}
 }
 
-// FromAWS describes a pubsub message coming straight from an AWS SQS formatted message.
+// WithDecoder describes a pubsub message coming straight from an AWS SQS formatted message.
 // This message is encoded slightly differently and must use a different decoder function.
-func FromAWS() Option {
+func WithDecoder() Option {
 	return func(args *Options) {
-		args.FromAWS = true
+		args.WithDecoder = true
 	}
 }
