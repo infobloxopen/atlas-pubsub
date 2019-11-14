@@ -39,8 +39,7 @@ func Filter(filter map[string]string) Option {
 	}
 }
 
-// WithDecoder describes a pubsub message coming straight from an AWS SQS formatted message.
-// This message is encoded slightly differently and must use a different decoder function.
+// WithDecoder is available if a custom decoder function must be used when reading the SQS queue
 func WithDecoder(decoder func(*string) ([]byte, error)) Option {
 	return func(args *Options) {
 		args.WithDecoder = decoder
