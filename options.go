@@ -40,7 +40,7 @@ func Filter(filter map[string]string) Option {
 }
 
 // Decoder is available if a custom decoder function must be used when reading the SQS queue
-func Decoder(decoder func(*string) ([]byte, error)) Option {
+func WithDecoder(decoder func(*string) ([]byte, error)) Option {
 	return func(args *Options) {
 		args.Decoder = decoder
 	}
