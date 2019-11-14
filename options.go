@@ -9,7 +9,7 @@ type Options struct {
 	Filter            map[string]string
 
 	// Other options go here:
-	WithDecoder       func(*string) ([]byte, error)
+	Decoder          func(*string) ([]byte, error)
 
 }
 
@@ -39,9 +39,9 @@ func Filter(filter map[string]string) Option {
 	}
 }
 
-// WithDecoder is available if a custom decoder function must be used when reading the SQS queue
-func WithDecoder(decoder func(*string) ([]byte, error)) Option {
+// Decoder is available if a custom decoder function must be used when reading the SQS queue
+func Decoder(decoder func(*string) ([]byte, error)) Option {
 	return func(args *Options) {
-		args.WithDecoder = decoder
+		args.Decoder = decoder
 	}
 }

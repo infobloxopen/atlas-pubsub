@@ -46,6 +46,8 @@ type awsSubscriber struct {
 	queueArn        *string
 	topicArn        *string
 	subscriptionArn *string
+
+	decoder         func(*string) ([]byte, error)
 }
 
 func (s *awsSubscriber) Start(ctx context.Context, opts ...pubsub.Option) (<-chan pubsub.Message, <-chan error) {
@@ -59,10 +61,9 @@ func (s *awsSubscriber) Start(ctx context.Context, opts ...pubsub.Option) (<-cha
 	}
 	msgChannel := make(chan pubsub.Message)
 	errChannel := make(chan error, 1)
-	var decoder func (*string) ([]byte, error)
-	decoder = decodeFromSQSMessage
-	if subscriberOptions.WithDecoder != nil {
-		decoder = subscriberOptions.WithDecoder
+	s.decoder = decodeFromSQSMessage
+	if subscriberOptions.Decoder != nil {
+		s.decoder = subscriberOptions.Decoder
 	}
 	go func() {
 		defer close(msgChannel)
@@ -84,7 +85,7 @@ func (s *awsSubscriber) Start(ctx context.Context, opts ...pubsub.Option) (<-cha
 			case <-ctx.Done():
 				return
 			default:
-				messages, err := s.pull(ctx, decoder)
+				messages, err := s.pull(ctx)
 				if err != nil {
 					errChannel <- err
 					return
@@ -291,7 +292,7 @@ func (s *awsSubscriber) ensureFilterPolicy(filter map[string]string) error {
 }
 
 // pull returns the message and error channel for the subscriber
-func (s *awsSubscriber) pull(ctx context.Context, withDecoder func (*string) ([]byte, error)) ([]*awsMessage, error) {
+func (s *awsSubscriber) pull(ctx context.Context) ([]*awsMessage, error) {
 	resp, err := s.sqs.ReceiveMessageWithContext(ctx, &sqs.ReceiveMessageInput{
 		QueueUrl:              s.queueURL,
 		WaitTimeSeconds:       aws.Int64(20),
@@ -306,7 +307,7 @@ func (s *awsSubscriber) pull(ctx context.Context, withDecoder func (*string) ([]
 	messages := make([]*awsMessage, 0, len(resp.Messages))
 	for _, msg := range resp.Messages {
 
-		message, err := withDecoder(msg.Body)
+		message, err := s.decoder(msg.Body)
 		if err != nil {
 			log.Printf("AWS: error parsing SQS message body: %v", err)
 			return nil, err
