@@ -306,7 +306,7 @@ func (s *awsSubscriber) pull(ctx context.Context, withDecoder func (*string) ([]
 	messages := make([]*awsMessage, 0, len(resp.Messages))
 	for _, msg := range resp.Messages {
 
-		message, err := decodeFromSQSMessageDecoder(msg.Body)
+		message, err := withDecoder(msg.Body)
 		if err != nil {
 			log.Printf("AWS: error parsing SQS message body: %v", err)
 			return nil, err
