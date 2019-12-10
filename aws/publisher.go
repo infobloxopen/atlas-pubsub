@@ -8,6 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sns/snsiface"
+
+	"github.com/infobloxopen/atlas-app-toolkit/requestid"
 	pubsub "github.com/infobloxopen/atlas-pubsub"
 )
 
@@ -44,6 +46,18 @@ type publisher struct {
 
 func (p publisher) Publish(ctx context.Context, msg []byte, metadata map[string]string) error {
 	message := encodeToSNSMessage(msg)
+	// Check if requestId already exists in metadata
+	_, exists := metadata[requestid.DefaultRequestIDKey]
+	if !exists {
+		// Inject request-id from context if it is available
+		reqId, exists := requestid.FromContext(ctx)
+		if !exists {
+			log.Printf("Cannot pass requestId from ctx, as value does not exist for key: %s", requestid.DefaultRequestIDKey)
+		} else {
+			metadata[requestid.DefaultRequestIDKey] = reqId
+		}
+	}
+
 	messageAttributes := encodeMessageAttributes(metadata)
 
 	_, publishErr := p.sns.PublishWithContext(ctx, &sns.PublishInput{

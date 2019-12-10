@@ -6,6 +6,7 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/infobloxopen/atlas-app-toolkit/requestid"
 	pubsub "github.com/infobloxopen/atlas-pubsub"
 )
 
@@ -37,6 +38,18 @@ func (s *grpcWrapper) Publish(ctx context.Context, req *PublishRequest) (*Publis
 	if err != nil {
 		log.Printf("GRPC: error initializing publisher for topic %q: %v", req.GetTopic(), err)
 		return nil, err
+	}
+
+	// Check if requestId already exists in metadata
+	_, exists := req.Metadata[requestid.DefaultRequestIDKey]
+	if !exists {
+		// Inject request-id from context if it is available
+		reqId, exists := requestid.FromContext(ctx)
+		if !exists {
+			log.Printf("Cannot pass requestId from ctx, as value does not exist for key: %s", requestid.DefaultRequestIDKey)
+		} else {
+			req.Metadata[requestid.DefaultRequestIDKey] = reqId
+		}
 	}
 
 	if err := p.Publish(ctx, req.GetMessage(), req.GetMetadata()); err != nil {

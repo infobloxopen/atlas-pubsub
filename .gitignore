@@ -14,3 +14,8 @@ coverage.txt
 
 # Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
 .glide/
+
+#  Ignore all files without extension in examples - go build output
+examples/*
+examples/!*/
+examples/!*.*

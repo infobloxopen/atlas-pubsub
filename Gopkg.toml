@@ -44,6 +44,10 @@
   name = "google.golang.org/grpc"
   version = "1.10.0"
 
+[[constraint]]
+  name = "github.com/infobloxopen/atlas-app-toolkit"
+  version = "=v0.18.2"
+
 #should be set as a constraint after dependency will be set to specific verison in toollkit
 [[override]]
   name = "github.com/golang/protobuf"

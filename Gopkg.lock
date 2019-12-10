@@ -85,6 +85,18 @@
   version = "0.2"
 
 [[projects]]
+  digest = "1:82587e9bbced61e052a16f45dbc5eb4c9271d1e26273ac81fe51953fb3f99c12"
+  name = "github.com/grpc-ecosystem/go-grpc-middleware"
+  packages = [
+    ".",
+    "logging/logrus/ctxlogrus",
+    "tags",
+  ]
+  pruneopts = "UT"
+  revision = "dd15ed025b6054e5253963e355991f3070d4e593"
+  version = "v1.1.0"
+
+[[projects]]
   digest = "1:3f58ecbaa1f31d1ff694ed17009cf274f4e2078ea435c83b43a144656ce3e54b"
   name = "github.com/grpc-ecosystem/grpc-gateway"
   packages = [
@@ -117,13 +129,14 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:ebba5e2367ba847419f4fd6a4caa1d45ea74a9922814ddaade5a420fa7ff8c31"
+  digest = "1:2e1f1e6228140a099daaf4f7f19d8d20ae2ec59c5629e76865f8db95cbb32cf1"
   name = "github.com/infobloxopen/atlas-app-toolkit"
   packages = [
     "errors",
     "gateway",
     "health",
     "query",
+    "requestid",
     "rpc/errdetails",
     "rpc/errfields",
     "server",
@@ -360,6 +373,7 @@
     "github.com/golang/protobuf/ptypes/wrappers",
     "github.com/google/uuid",
     "github.com/infobloxopen/atlas-app-toolkit/health",
+    "github.com/infobloxopen/atlas-app-toolkit/requestid",
     "github.com/infobloxopen/atlas-app-toolkit/server",
     "github.com/infobloxopen/atlas-pubsub",
     "github.com/infobloxopen/atlas-pubsub/aws",
