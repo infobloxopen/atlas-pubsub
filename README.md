@@ -2,6 +2,7 @@
 
 [![Build Status](https://img.shields.io/travis/infobloxopen/atlas-pubsub/master.svg?label=build)](https://travis-ci.org/infobloxopen/atlas-pubsub)
 [![Code Coverage](https://img.shields.io/codecov/c/github/infobloxopen/atlas-pubsub/master.svg)](https://codecov.io/github/infobloxopen/atlas-pubsub?branch=master)
+[![Godoc](https://godoc.org/github.com/infobloxopen/atlas-pubsub)
 
 
 ## Pub/Sub implementations
