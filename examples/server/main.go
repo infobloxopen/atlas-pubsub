@@ -10,6 +10,7 @@ import (
 	"net"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
@@ -83,10 +84,10 @@ func NewLogger() *logrus.Logger {
 // newAWSPubSubServer creates a new grpc PubSub server using the broker
 // implementation for AWS
 func newAWSPubSubServer(logger *logrus.Logger) (pubsubgrpc.PubSubServer, error) {
-	sess, err := session.NewSession()
-	if err != nil {
-		return nil, err
-	}
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		AssumeRoleTokenProvider: stscreds.StdinTokenProvider,
+		SharedConfigState:       session.SharedConfigEnable,
+	}))
 	// Checks to see if aws config credentials are valid
 	logger.Print("checking server for AWS permissions")
 	if err := pubsubaws.VerifyPermissions(sess); err != nil {
