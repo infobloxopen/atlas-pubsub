@@ -55,12 +55,12 @@ type grpcWrapper struct {
 func (s *grpcWrapper) Publish(ctx context.Context, req *PublishRequest) (*PublishResponse, error) {
 	p, err := s.publisherFactory(ctx, req.GetTopic())
 	if err != nil {
-		s.logger.Infof("GRPC: error initializing publisher for topic %q: %v", req.GetTopic(), err)
+		s.logger.Errorf("GRPC: error initializing publisher for topic %q: %v", req.GetTopic(), err)
 		return nil, err
 	}
 
 	if err := p.Publish(ctx, req.GetMessage(), req.GetMetadata()); err != nil {
-		s.logger.Infof("GRPC: error publishing to topic %q: %v", req.GetTopic(), err)
+		s.logger.Errorf("GRPC: error publishing to topic %q: %v", req.GetTopic(), err)
 		return nil, err
 	}
 
@@ -71,7 +71,7 @@ func (s *grpcWrapper) Publish(ctx context.Context, req *PublishRequest) (*Publis
 func (s *grpcWrapper) Subscribe(req *SubscribeRequest, srv PubSub_SubscribeServer) error {
 	subscriber, err := s.subscriberFactory(context.Background(), req.GetTopic(), req.GetSubscriptionId())
 	if err != nil {
-		s.logger.Infof("GRPC: error initializing subscriber for topic %q, subID %q: %v", req.GetTopic(), req.GetSubscriptionId(), err)
+		s.logger.Errorf("GRPC: error initializing subscriber for topic %q, subID %q: %v", req.GetTopic(), req.GetSubscriptionId(), err)
 		return err
 	}
 
@@ -111,11 +111,11 @@ func (s *grpcWrapper) Subscribe(req *SubscribeRequest, srv PubSub_SubscribeServe
 				Message:   msg.Message(),
 				Metadata:  msg.Metadata(),
 			}); err != nil {
-				s.logger.Infof("GRPC: error serving message for topic %q, subID %q: %v", req.GetTopic(), req.GetSubscriptionId(), err)
+				s.logger.Errorf("GRPC: error serving message for topic %q, subID %q: %v", req.GetTopic(), req.GetSubscriptionId(), err)
 				return err
 			}
 		case err := <-e:
-			s.logger.Infof("GRPC: general error received for topic %q, subID %q: %v", req.GetTopic(), req.GetSubscriptionId(), err)
+			s.logger.Errorf("GRPC: general error received for topic %q, subID %q: %v", req.GetTopic(), req.GetSubscriptionId(), err)
 			return err
 		}
 	}
@@ -124,13 +124,13 @@ func (s *grpcWrapper) Subscribe(req *SubscribeRequest, srv PubSub_SubscribeServe
 func (s *grpcWrapper) Ack(ctx context.Context, req *AckRequest) (*AckResponse, error) {
 	subscriber, err := s.subscriberFactory(ctx, req.GetTopic(), req.GetSubscriptionId())
 	if err != nil {
-		s.logger.Infof("GRPC: error acking message for topic %q, subID %q, messageID %q: %v", req.GetTopic(), req.GetSubscriptionId(), req.GetMessageId(), err)
+		s.logger.Errorf("GRPC: error acking message for topic %q, subID %q, messageID %q: %v", req.GetTopic(), req.GetSubscriptionId(), req.GetMessageId(), err)
 		return nil, err
 	}
 	s.logger.Infof("GRPC: acking message for topic %q, subID %q, messageID %q", req.GetTopic(), req.GetSubscriptionId(), req.GetMessageId())
 	err = subscriber.AckMessage(ctx, req.GetMessageId())
 	if err != nil {
-		s.logger.Infof("GRPC: error acking message for topic %q, subID %q, messageID %q: %v", req.GetTopic(), req.GetSubscriptionId(), req.GetMessageId(), err)
+		s.logger.Errorf("GRPC: error acking message for topic %q, subID %q, messageID %q: %v", req.GetTopic(), req.GetSubscriptionId(), req.GetMessageId(), err)
 	}
 	return &AckResponse{}, err
 }
@@ -138,12 +138,12 @@ func (s *grpcWrapper) Ack(ctx context.Context, req *AckRequest) (*AckResponse, e
 func (s *grpcWrapper) DeleteTopic(ctx context.Context, req *DeleteTopicRequest) (*DeleteTopicResponse, error) {
 	subscriber, err := s.publisherFactory(ctx, req.GetTopic())
 	if err != nil {
-		s.logger.Infof("GRPC: error delete topic %q, error %s", req.GetTopic(), err)
+		s.logger.Errorf("GRPC: error delete topic %q, error %s", req.GetTopic(), err)
 		return &DeleteTopicResponse{}, err
 	}
 
 	if err := subscriber.DeleteTopic(ctx); err != nil {
-		s.logger.Infof("GRPC: error delete topic %q, error %s", req.GetTopic(), err)
+		s.logger.Errorf("GRPC: error delete topic %q, error %s", req.GetTopic(), err)
 		return &DeleteTopicResponse{}, err
 
 	}
@@ -154,12 +154,12 @@ func (s *grpcWrapper) DeleteTopic(ctx context.Context, req *DeleteTopicRequest) 
 func (s *grpcWrapper) DeleteSubscription(ctx context.Context, req *DeleteSubscriptionRequest) (*DeleteSubscriptionResponse, error) {
 	subscriber, err := s.subscriberFactory(ctx, req.GetTopic(), req.GetSubscriptionId())
 	if err != nil {
-		s.logger.Infof("GRPC: error delete subscription, topic %q, subscriptionId %q, error %s", req.GetTopic(), req.GetSubscriptionId(), err)
+		s.logger.Errorf("GRPC: error delete subscription, topic %q, subscriptionId %q, error %s", req.GetTopic(), req.GetSubscriptionId(), err)
 		return &DeleteSubscriptionResponse{}, err
 	}
 
 	if err := subscriber.DeleteSubscription(ctx); err != nil {
-		s.logger.Infof("GRPC: error delete subscription, topic %q, subscriptionId %q, error %s", req.GetTopic(), req.GetSubscriptionId(), err)
+		s.logger.Errorf("GRPC: error delete subscription, topic %q, subscriptionId %q, error %s", req.GetTopic(), req.GetSubscriptionId(), err)
 		return &DeleteSubscriptionResponse{}, err
 	}
 

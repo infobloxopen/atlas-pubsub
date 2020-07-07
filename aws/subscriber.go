@@ -307,7 +307,7 @@ func (s *awsSubscriber) pull(ctx context.Context) ([]*awsMessage, error) {
 		MessageAttributeNames: []*string{aws.String("All")},
 	})
 	if err != nil {
-		s.logger.Infof("AWS: error while fetching messages %v", err)
+		s.logger.Errorf("AWS: error while fetching messages %v", err)
 		return nil, err
 	}
 
@@ -315,13 +315,13 @@ func (s *awsSubscriber) pull(ctx context.Context) ([]*awsMessage, error) {
 	for _, msg := range resp.Messages {
 		message, err := decodeFromSQSMessage(msg.Body)
 		if err != nil {
-			s.logger.Infof("AWS: error parsing SQS message body: %v", err)
+			s.logger.Errorf("AWS: error parsing SQS message body: %v", err)
 			return nil, err
 		}
 
 		attributes, err := decodeMessageAttributes(msg.Body)
 		if err != nil {
-			s.logger.Infof("AWS: error parsing SQS message attributes: %v", err)
+			s.logger.Errorf("AWS: error parsing SQS message attributes: %v", err)
 			return nil, err
 		}
 		messages = append(messages, &awsMessage{

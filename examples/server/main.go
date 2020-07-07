@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/infobloxopen/atlas-app-toolkit/health"
+	"github.com/infobloxopen/atlas-app-toolkit/logging"
 	"github.com/infobloxopen/atlas-app-toolkit/server"
 	pubsub "github.com/infobloxopen/atlas-pubsub"
 	pubsubaws "github.com/infobloxopen/atlas-pubsub/aws"
@@ -28,7 +29,7 @@ var registeredPubSubServer = false
 const pubSubNotReadyError = "PubSub Server is not ready!"
 
 func main() {
-	logger := NewLogger()
+	logger := logging.New(viper.GetString("logging.level"))
 	if viper.GetBool("internal.enable") {
 		go func() {
 			if err := ServeInternal(logger); err != nil {
@@ -56,28 +57,6 @@ func main() {
 	if err := grpcServer.Serve(lis); err != nil {
 		logger.Fatalf("failed to serve: %v", err)
 	}
-}
-
-func NewLogger() *logrus.Logger {
-	logger := logrus.StandardLogger()
-
-	// Set the log level on the default logger based on command line flag
-	logLevels := map[string]logrus.Level{
-		"debug":   logrus.DebugLevel,
-		"info":    logrus.InfoLevel,
-		"warning": logrus.WarnLevel,
-		"error":   logrus.ErrorLevel,
-		"fatal":   logrus.FatalLevel,
-		"panic":   logrus.PanicLevel,
-	}
-	if level, ok := logLevels[viper.GetString("logging.level")]; !ok {
-		logger.Errorf("Invalid %q provided for log level", viper.GetString("logging.level"))
-		logger.SetLevel(logrus.InfoLevel)
-	} else {
-		logger.SetLevel(level)
-	}
-
-	return logger
 }
 
 // newAWSPubSubServer creates a new grpc PubSub server using the broker

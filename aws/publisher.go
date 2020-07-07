@@ -56,7 +56,7 @@ type publisher struct {
 }
 
 func (p publisher) Publish(ctx context.Context, msg []byte, metadata map[string]string) error {
-	p.logger.Infof("AWS: publish to topic %q", p.topicArn)
+	p.logger.Debugf("AWS: publish to topic %q", p.topicArn)
 	message := encodeToSNSMessage(msg)
 	messageAttributes := encodeMessageAttributes(metadata)
 
