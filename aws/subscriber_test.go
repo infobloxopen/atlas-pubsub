@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	pubsub "github.com/infobloxopen/atlas-pubsub"
+	"github.com/sirupsen/logrus"
 )
 
 // TestStart will run through a single successful message and then one mangled message
@@ -201,6 +202,7 @@ func TestEnsureFilterPolicy_ClearingFilter_ResubscribesToPolicy(t *testing.T) {
 	subscriber := awsSubscriber{
 		sns:             snsMock,
 		subscriptionArn: aws.String("testSubscriptionArn"),
+		logger:          logrus.StandardLogger(),
 	}
 	subscriber.ensureFilterPolicy(nil)
 	if snsMock.spiedUnsubscribeInput == nil {
@@ -224,7 +226,7 @@ func TestEnsureFilterPolicy_DifferentPolicy_SetsSubscriptionAttributes(t *testin
 			},
 		},
 	}
-	subscriber := awsSubscriber{sns: &snsMock}
+	subscriber := awsSubscriber{sns: &snsMock, logger: logrus.StandardLogger()}
 	subscriber.ensureFilterPolicy(map[string]string{"baz": "qux"})
 	if snsMock.spiedSubscribeInput != nil {
 		t.Error("sns.Subscribe was called, but shouldn't have been")

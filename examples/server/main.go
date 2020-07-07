@@ -6,7 +6,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"strings"
 
@@ -90,18 +89,18 @@ func newAWSPubSubServer(logger *logrus.Logger) (pubsubgrpc.PubSubServer, error) 
 	}))
 	// Checks to see if aws config credentials are valid
 	logger.Print("checking server for AWS permissions")
-	if err := pubsubaws.VerifyPermissions(sess); err != nil {
+	if err := pubsubaws.VerifyPermissions(sess, logger); err != nil {
 		logger.Fatalf("AWS permissions check failed: %v", err)
 	}
 	logger.Print("server has proper AWS permissions")
 
 	pubFactory := func(ctx context.Context, topic string) (pubsub.Publisher, error) {
-		return pubsubaws.NewPublisher(sess, topic)
+		return pubsubaws.NewPublisher(sess, topic, pubsubaws.PublishWithLogger(logger))
 	}
 	subFactory := func(ctx context.Context, topic, subscriptionID string) (pubsub.Subscriber, error) {
-		return pubsubaws.NewSubscriber(sess, topic, subscriptionID)
+		return pubsubaws.NewSubscriber(sess, topic, subscriptionID, pubsubaws.SubscribeWithLogger(logger))
 	}
-	return pubsubgrpc.NewPubSubServer(pubFactory, subFactory), nil
+	return pubsubgrpc.NewPubSubServer(pubFactory, subFactory, pubsubgrpc.WithLogger(logger)), nil
 }
 
 // ServeInternal builds and runs the server that listens on InternalAddress
@@ -136,13 +135,13 @@ func init() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AddConfigPath(viper.GetString("config.source"))
 	if viper.GetString("config.file") != "" {
-		log.Printf("Serving from configuration file: %s", viper.GetString("config.file"))
+		logrus.Infof("Serving from configuration file: %s", viper.GetString("config.file"))
 		viper.SetConfigName(viper.GetString("config.file"))
 		if err := viper.ReadInConfig(); err != nil {
-			log.Fatalf("cannot load configuration: %v", err)
+			logrus.Fatalf("cannot load configuration: %v", err)
 		}
 	} else {
-		log.Printf("Serving from default values, environment variables, and/or flags")
+		logrus.Infof("Serving from default values, environment variables, and/or flags")
 	}
 }
 
