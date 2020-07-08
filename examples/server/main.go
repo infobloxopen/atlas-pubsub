@@ -6,7 +6,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"strings"
 
@@ -18,6 +17,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/infobloxopen/atlas-app-toolkit/health"
+	"github.com/infobloxopen/atlas-app-toolkit/logging"
 	"github.com/infobloxopen/atlas-app-toolkit/server"
 	pubsub "github.com/infobloxopen/atlas-pubsub"
 	pubsubaws "github.com/infobloxopen/atlas-pubsub/aws"
@@ -29,7 +29,7 @@ var registeredPubSubServer = false
 const pubSubNotReadyError = "PubSub Server is not ready!"
 
 func main() {
-	logger := NewLogger()
+	logger := logging.New(viper.GetString("logging.level"))
 	if viper.GetBool("internal.enable") {
 		go func() {
 			if err := ServeInternal(logger); err != nil {
@@ -59,28 +59,6 @@ func main() {
 	}
 }
 
-func NewLogger() *logrus.Logger {
-	logger := logrus.StandardLogger()
-
-	// Set the log level on the default logger based on command line flag
-	logLevels := map[string]logrus.Level{
-		"debug":   logrus.DebugLevel,
-		"info":    logrus.InfoLevel,
-		"warning": logrus.WarnLevel,
-		"error":   logrus.ErrorLevel,
-		"fatal":   logrus.FatalLevel,
-		"panic":   logrus.PanicLevel,
-	}
-	if level, ok := logLevels[viper.GetString("logging.level")]; !ok {
-		logger.Errorf("Invalid %q provided for log level", viper.GetString("logging.level"))
-		logger.SetLevel(logrus.InfoLevel)
-	} else {
-		logger.SetLevel(level)
-	}
-
-	return logger
-}
-
 // newAWSPubSubServer creates a new grpc PubSub server using the broker
 // implementation for AWS
 func newAWSPubSubServer(logger *logrus.Logger) (pubsubgrpc.PubSubServer, error) {
@@ -90,18 +68,18 @@ func newAWSPubSubServer(logger *logrus.Logger) (pubsubgrpc.PubSubServer, error) 
 	}))
 	// Checks to see if aws config credentials are valid
 	logger.Print("checking server for AWS permissions")
-	if err := pubsubaws.VerifyPermissions(sess); err != nil {
+	if err := pubsubaws.VerifyPermissions(sess, logger); err != nil {
 		logger.Fatalf("AWS permissions check failed: %v", err)
 	}
 	logger.Print("server has proper AWS permissions")
 
 	pubFactory := func(ctx context.Context, topic string) (pubsub.Publisher, error) {
-		return pubsubaws.NewPublisher(sess, topic)
+		return pubsubaws.NewPublisher(sess, topic, pubsubaws.PublishWithLogger(logger))
 	}
 	subFactory := func(ctx context.Context, topic, subscriptionID string) (pubsub.Subscriber, error) {
-		return pubsubaws.NewSubscriber(sess, topic, subscriptionID)
+		return pubsubaws.NewSubscriber(sess, topic, subscriptionID, pubsubaws.SubscribeWithLogger(logger))
 	}
-	return pubsubgrpc.NewPubSubServer(pubFactory, subFactory), nil
+	return pubsubgrpc.NewPubSubServer(pubFactory, subFactory, pubsubgrpc.WithLogger(logger)), nil
 }
 
 // ServeInternal builds and runs the server that listens on InternalAddress
@@ -136,13 +114,13 @@ func init() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AddConfigPath(viper.GetString("config.source"))
 	if viper.GetString("config.file") != "" {
-		log.Printf("Serving from configuration file: %s", viper.GetString("config.file"))
+		logrus.Infof("Serving from configuration file: %s", viper.GetString("config.file"))
 		viper.SetConfigName(viper.GetString("config.file"))
 		if err := viper.ReadInConfig(); err != nil {
-			log.Fatalf("cannot load configuration: %v", err)
+			logrus.Fatalf("cannot load configuration: %v", err)
 		}
 	} else {
-		log.Printf("Serving from default values, environment variables, and/or flags")
+		logrus.Infof("Serving from default values, environment variables, and/or flags")
 	}
 }
 

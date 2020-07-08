@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"strconv"
 	"time"
 
@@ -20,6 +19,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"github.com/google/uuid"
 	pubsub "github.com/infobloxopen/atlas-pubsub"
+	"github.com/sirupsen/logrus"
 )
 
 // some arbitrary prefix I came up with to help distinguish between aws broker
@@ -43,27 +43,27 @@ var ErrMessageRetentionPeriodOutOfRange = errors.New("The message retention peri
 
 // VerifyPermissions checks if the aws config exists and checks if it has permissions to
 // create sns topics, send messages, create SQS topics, delete topics, and delete sqs queues
-func VerifyPermissions(sess *session.Session) error {
+func VerifyPermissions(sess *session.Session, log *logrus.Logger) error {
 	// Check if environment contains aws config
 	topic := "verifyPermissions"
 	subscriptionID := uuid.New().String()
 
 	log.Println("verify permissions: creating subscriber")
-	subscriber, err := newSubscriber(sns.New(sess), sqs.New(sess), topic, subscriptionID)
+	subscriber, err := newSubscriber(sns.New(sess), sqs.New(sess), topic, subscriptionID, SubscribeWithLogger(log))
 	if err != nil {
 		return err
 	}
 
 	log.Println("verify permissions: creating publisher")
-	publisher, err := newPublisher(sns.New(sess), topic)
+	publisher, err := newPublisher(sns.New(sess), topic, PublishWithLogger(log))
 	if err != nil {
 		return err
 	}
-	return verifyPermissions(subscriber, publisher)
+	return verifyPermissions(subscriber, publisher, log)
 }
 
 // verifyPermissions checks if the aws config has correct permissions
-func verifyPermissions(subscriber *awsSubscriber, publisher *publisher) error {
+func verifyPermissions(subscriber *awsSubscriber, publisher *publisher, log *logrus.Logger) error {
 	defer func() {
 		// Delete subscription and subscriber queue
 		log.Println("verify permissions: deleting subscription")
@@ -162,13 +162,13 @@ func ensureTopic(topic string, snsClient snsiface.SNSAPI) (*string, error) {
 
 // ensureQueue returns the queueURL for the given queueName, creating the queue
 // if it doesn't exist
-func ensureQueue(queueName *string, sqsClient sqsiface.SQSAPI) (*string, error) {
+func ensureQueue(queueName *string, sqsClient sqsiface.SQSAPI, logger *logrus.Logger) (*string, error) {
 	queueURLResp, queueURLErr := sqsClient.GetQueueUrl(&sqs.GetQueueUrlInput{QueueName: queueName})
 	if queueURLErr == nil {
 		return queueURLResp.QueueUrl, nil
 	}
 	if awsErr, ok := queueURLErr.(awserr.Error); ok && awsErr.Code() == sqs.ErrCodeQueueDoesNotExist {
-		log.Printf("AWS: creating queue: %q", *queueName)
+		logger.Infof("AWS: creating queue: %q", *queueName)
 		createResp, createErr := sqsClient.CreateQueue(&sqs.CreateQueueInput{
 			QueueName: queueName,
 		})

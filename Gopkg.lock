@@ -50,6 +50,14 @@
   version = "v1.32.8"
 
 [[projects]]
+  branch = "master"
+  digest = "1:283c2e79f34b41f444d14c2b7a3cc458d3ff18736e502832eac0a407ebfe6263"
+  name = "github.com/dgrijalva/jwt-go"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "dc14462fd58732591c7fa58cc8496d6824316a82"
+
+[[projects]]
   digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
@@ -87,6 +95,22 @@
   version = "0.2"
 
 [[projects]]
+  digest = "1:55a4db28a494118f80b5edc5df24d28a292f2743fbef51d870e59133e41a6ea5"
+  name = "github.com/grpc-ecosystem/go-grpc-middleware"
+  packages = [
+    ".",
+    "auth",
+    "logging",
+    "logging/logrus",
+    "logging/logrus/ctxlogrus",
+    "tags",
+    "util/metautils",
+  ]
+  pruneopts = "UT"
+  revision = "3c51f7f332123e8be5a157c0802a228ac85bf9db"
+  version = "v1.2.0"
+
+[[projects]]
   digest = "1:3f58ecbaa1f31d1ff694ed17009cf274f4e2078ea435c83b43a144656ce3e54b"
   name = "github.com/grpc-ecosystem/grpc-gateway"
   packages = [
@@ -119,20 +143,23 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:ebba5e2367ba847419f4fd6a4caa1d45ea74a9922814ddaade5a420fa7ff8c31"
+  digest = "1:261310d8a00938042fa2fb7d3cca0b59c8cb88c718ba5c1de4d9f0e9e904e290"
   name = "github.com/infobloxopen/atlas-app-toolkit"
   packages = [
+    "auth",
     "errors",
     "gateway",
     "health",
+    "logging",
     "query",
+    "requestid",
     "rpc/errdetails",
     "rpc/errfields",
     "server",
   ]
   pruneopts = "UT"
-  revision = "d10b6c4b87d43a7802983a938998b53f7c424dc4"
-  version = "v0.17.0"
+  revision = "c488b8e6a72df08a2cd3e7e4af64ba370d77c1f3"
+  version = "v0.21.1"
 
 [[projects]]
   digest = "1:bb81097a5b62634f3e9fec1014657855610c82d19b9a40c17612e32651e35dca"
@@ -349,6 +376,7 @@
     "github.com/golang/protobuf/ptypes/wrappers",
     "github.com/google/uuid",
     "github.com/infobloxopen/atlas-app-toolkit/health",
+    "github.com/infobloxopen/atlas-app-toolkit/logging",
     "github.com/infobloxopen/atlas-app-toolkit/server",
     "github.com/sirupsen/logrus",
     "github.com/spf13/pflag",

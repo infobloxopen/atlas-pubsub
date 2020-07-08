@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/sirupsen/logrus"
 )
 
 // setupVerifyPermissions sets up a publisher and subscriber and returns the mocks for further configuration.
@@ -36,7 +37,7 @@ func setupVerifyPermissions(t *testing.T) (*mockSNS, *mockSQS, func() error) {
 	}
 	s.queueArn = aws.String(queueArn)
 
-	return &snsMock, &sqsMock, func() error { return verifyPermissions(s, p) }
+	return &snsMock, &sqsMock, func() error { return verifyPermissions(s, p, logrus.StandardLogger()) }
 }
 
 func TestVerifyPermissions(t *testing.T) {
@@ -118,7 +119,7 @@ func TestEnsureQueue(t *testing.T) {
 	{ // verify nil error returns queue url
 		expectedQueueURL := aws.String("expected queue url")
 		sqsSpy.stubbedGetQueueURLOutput = &sqs.GetQueueUrlOutput{QueueUrl: expectedQueueURL}
-		actualQueueURL, err := ensureQueue(queueName, &sqsSpy)
+		actualQueueURL, err := ensureQueue(queueName, &sqsSpy, logrus.StandardLogger())
 		if err != nil {
 			t.Errorf("expected GetQueueUrl not to return error, but got \"%v\"", err)
 		} else if *actualQueueURL != *expectedQueueURL {
@@ -129,7 +130,7 @@ func TestEnsureQueue(t *testing.T) {
 		expectedCreatedQueueURL := aws.String("expected queue URL")
 		sqsSpy.stubbedGetQueueURLError = awserr.New(sqs.ErrCodeQueueDoesNotExist, "foo", errors.New("foo"))
 		sqsSpy.stubbedCreateQueueOutput = &sqs.CreateQueueOutput{QueueUrl: expectedCreatedQueueURL}
-		actualCreatedQueueURL, actualErr := ensureQueue(queueName, &sqsSpy)
+		actualCreatedQueueURL, actualErr := ensureQueue(queueName, &sqsSpy, logrus.StandardLogger())
 		if sqsSpy.spiedCreateQueueInput == nil {
 			t.Error("expected sqs.CreateQueue to be called, but wasn't")
 		} else {
@@ -148,7 +149,7 @@ func TestEnsureQueue(t *testing.T) {
 	{ // verify ensureQueue forwards any sqs.CreateQueue errors
 		expectedError := errors.New("expected sqs.CreateQueue error")
 		sqsSpy.stubbedCreateQueueError = expectedError
-		_, actualError := ensureQueue(queueName, &sqsSpy)
+		_, actualError := ensureQueue(queueName, &sqsSpy, logrus.StandardLogger())
 		if expectedError != actualError {
 			t.Errorf("expected sqs.CreateQueue to return error \"%s\", but returned \"%s\"", expectedError.Error(), actualError.Error())
 		}
@@ -156,7 +157,7 @@ func TestEnsureQueue(t *testing.T) {
 	{ // verify ensureQueue returns any non-404 errors from sqs.GetQueueURL
 		expectedError := errors.New("expected sqs.GetQueueURL error")
 		sqsSpy.stubbedGetQueueURLError = expectedError
-		_, actualError := ensureQueue(queueName, &sqsSpy)
+		_, actualError := ensureQueue(queueName, &sqsSpy, logrus.StandardLogger())
 		if expectedError != actualError {
 			t.Errorf("expected sqs.GetQueueURL to return error \"%s\", but return \"%s\"", expectedError.Error(), actualError.Error())
 		}

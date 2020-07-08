@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/sirupsen/logrus"
 )
 
 // TestNewPublisher verifies that aws creates a topic for the given topic name,
@@ -58,7 +60,7 @@ func TestPublish(t *testing.T) {
 	metadata := map[string]string{"foo": "bar"}
 	spy := mockSNS{stubbedPublishError: errors.New("test publish error")}
 
-	p := publisher{sns: &spy, topicArn: "foo"}
+	p := publisher{sns: &spy, topicArn: "foo", logger: logrus.StandardLogger()}
 	p.Publish(context.Background(), msg, metadata)
 	spiedInput := spy.spiedPublishInput
 
