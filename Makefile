@@ -1,4 +1,4 @@
-VERSION := $(shell git describe --dirty=-dirty --always)
+VERSION := $(shell git describe --dirty=-dirty --always --long --tags)
 
 APP_NAME := atlas.pubsub
 
@@ -55,8 +55,7 @@ build-example: fmt bin build
 
 # formats the repo
 fmt:
-	@echo "Running 'go fmt ...'"
-	@go fmt -x "$(REPO)/..."
+	$(BUILDER) go fmt -x "$(REPO)/..."
 
 deps:
 	@echo "Getting dependencies..."
@@ -68,6 +67,9 @@ bin:
 clean:
 	@rm -rf "$(BINDIR)"
 	@rm -rf .glide
+
+show-image-name:
+	@echo $(IMAGE_NAME)
 
 # --- Docker commands ---
 # Builds the docker image

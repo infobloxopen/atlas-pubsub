@@ -3,20 +3,20 @@
 # Declare variables to be passed into your templates.
 rbac:
   enabled: false
-  details: 
+  details:
 
-imagePullSecretsName: 
+imagePullSecretsName:
 
 replicaCount: 1
 
-env: 
+env:
   name: "AWS_REGION"
   value: "us-east-1"
 
 image:
-  repository: "infoblox"
+  repository: "infobloxcto"
   name: "atlas.pubsub"
-  tag: latest
+  tag:
   pullPolicy: Always
 
 service:
@@ -25,7 +25,7 @@ service:
   logging_level: "debug"
   aws_region: "us-east-1"
 
-resources: 
+resources:
   limits:
     cpu: 200m
     memory: 200Mi
