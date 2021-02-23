@@ -8,7 +8,7 @@ pipeline {
     HELM_IMAGE = "infoblox/helm:3.2.4-5b243a2"
     VERSION = sh(script: "git describe --always --long --tags", returnStdout: true).trim()
     TAG = "${env.VERSION}-j${env.BUILD_NUMBER}"
-    DIRECTORY = "src/github.com/Infoblox-CTO/atlas-pubsub"
+    DIRECTORY = "src/github.com/infobloxopen/atlas-pubsub"
   }
   stages {
     stage("Prepare Build") {
