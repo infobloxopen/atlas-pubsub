@@ -63,9 +63,9 @@ pipeline {
       }
       post {
         success {
-            dir("$DIRECTORY") {
-                finalizeBuild(sh(script: 'make show-image-name VERSION=$TAG', returnStdout: true))
-            }
+          dir("$DIRECTORY") {
+             finalizeBuild(sh(script: 'make show-image-name VERSION=$TAG', returnStdout: true))
+          }
         }
       }
     }
