@@ -35,12 +35,12 @@ pipeline {
       }
     }
     stage("Push Chart") {
-      when {
-        anyOf {
-          branch 'master'
-          branch 'ci'
-        }
-      }
+//       when {
+//         anyOf {
+//           branch 'master'
+//           branch 'ci'
+//         }
+//       }
       steps {
         withAWS(credentials: "CICD_HELM", region: "us-east-1") {
           sh '''
