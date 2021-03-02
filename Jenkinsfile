@@ -60,11 +60,11 @@ pipeline {
         archiveArtifacts artifacts: 'build.properties'
         archiveArtifacts artifacts: '*.tgz'
       }
-      post {
-        success {
-          finalizeBuild(sh(script: 'make show-image-name VERSION=$TAG', returnStdout: true))
-        }
-      }
+    }
+  }
+  post {
+    success {
+      finalizeBuild(sh(script: 'make show-image-name VERSION=$TAG', returnStdout: true))
     }
   }
 }
