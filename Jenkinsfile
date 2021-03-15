@@ -1,4 +1,4 @@
-@Library('jenkins.shared.library') _
+@Library('jenkins.shared.library@ibOpenPRSettings') _
 
 pipeline {
   agent {
