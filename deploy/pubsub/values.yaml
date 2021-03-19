@@ -9,6 +9,12 @@ imagePullSecretsName:
 
 replicaCount: 1
 
+# additional annotations to add to the pods
+podAnnotations: {}
+
+# additional labels to add to the pods
+podLabels: {}
+
 env:
   name: "AWS_REGION"
   value: "us-east-1"
