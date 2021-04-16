@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 rbac:
   enabled: false
-  details:
+  details: {}
 
 imagePullSecretsName:
 
