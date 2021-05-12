@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -15,6 +16,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 
 	"github.com/infobloxopen/atlas-app-toolkit/health"
 	"github.com/infobloxopen/atlas-app-toolkit/logging"
@@ -43,7 +45,11 @@ func main() {
 	if err != nil {
 		logger.Fatalf("failed to listen: %v", err)
 	}
-	grpcServer := grpc.NewServer()
+
+	// attempt to fix ENHANCE_YOUR_CALM error when using linkerd
+	grpcServer := grpc.NewServer(grpc.KeepaliveEnforcementPolicy(
+		keepalive.EnforcementPolicy{MinTime: time.Millisecond, PermitWithoutStream: true},
+	))
 
 	pubsubServer, err := newAWSPubSubServer(logger)
 	if err != nil {
