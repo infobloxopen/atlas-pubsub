@@ -6,12 +6,12 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/golang/protobuf/proto"
-	"github.com/infobloxopen/atlas-pubsub/examples/protobuf"
 	"log"
 	"strconv"
 
+	"github.com/golang/protobuf/proto"
 	pubsub "github.com/infobloxopen/atlas-pubsub"
+	"github.com/infobloxopen/atlas-pubsub/examples/protobuf"
 	pubsubgrpc "github.com/infobloxopen/atlas-pubsub/grpc"
 	"google.golang.org/grpc"
 )
@@ -46,11 +46,11 @@ func main() {
 
 			log.Printf("                   (Marshalled): %q", msg.Message())
 			log.Printf("Received message (Unmarshalled): %q %q %q %q", receivedPerson.GetName(), strconv.Itoa(int(receivedPerson.GetAge())), receivedPerson.EmployeeInfo.GetLocation(), receivedPerson.EmployeeInfo.GetTitle())
-			go func() {
+			go func(msg pubsub.Message) {
 				if err := msg.Ack(); err != nil {
-					log.Fatalf("failed to ack messageID %q: %v", msg.MessageID(), err)
+					log.Printf("failed to ack messageID %q: %v", msg.MessageID(), err)
 				}
-			}()
+			}(msg)
 		case err := <-e:
 			log.Printf("encountered error reading subscription: %v", err)
 		}
