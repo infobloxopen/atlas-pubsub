@@ -45,9 +45,11 @@ func main() {
 			}
 			greeting := string(msg.Message())
 			log.Printf("received message: %q\t%v", greeting, msg.Metadata())
-			if err := msg.Ack(); err != nil {
-				log.Fatalf("failed to ack messageID %q: %v", msg.MessageID(), err)
-			}
+			go func(msg pubsub.Message) {
+				if err := msg.Ack(); err != nil {
+					log.Printf("failed to ack messageID %q: %v", msg.MessageID(), err)
+				}
+			}(msg)
 		case err := <-e:
 			log.Printf("encountered error reading subscription: %v", err)
 		}
