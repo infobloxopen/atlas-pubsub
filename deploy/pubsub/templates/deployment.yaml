@@ -48,10 +48,30 @@ spec:
             - name: grpc
               containerPort: {{ .Values.service.port }}
               protocol: TCP
+            - name: internal
+              containerPort: {{ .Values.internal.port }}
+              protocol: TCP
           args: [
               "--logging.level={{ .Values.service.logging_level }}",
+              "--internal.port={{ .Values.internal.port }}",
               "--server.port={{ .Values.service.port }}"
             ]
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.internal.port }}
+              scheme: HTTP
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            successThreshold: 1
+            failureThreshold: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ /Values.internal.port }}
+              scheme: HTTP
+            initialDelaySeconds: 3
+            timeoutSeconds: 10
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
 ---

@@ -12,6 +12,9 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -47,9 +50,14 @@ func main() {
 	}
 
 	// attempt to fix ENHANCE_YOUR_CALM error when using linkerd
-	grpcServer := grpc.NewServer(grpc.KeepaliveEnforcementPolicy(
-		keepalive.EnforcementPolicy{MinTime: time.Millisecond, PermitWithoutStream: true},
-	))
+	grpcServer := grpc.NewServer(
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{MinTime: time.Millisecond, PermitWithoutStream: true}),
+		grpc.UnaryInterceptor(
+			grpc_middleware.ChainUnaryServer(
+				grpc_prometheus.UnaryServerInterceptor,
+			),
+		),
+	)
 
 	pubsubServer, err := newAWSPubSubServer(logger)
 	if err != nil {
@@ -100,6 +108,8 @@ func ServeInternal(logger *logrus.Logger) error {
 	s, err := server.NewServer(
 		// register our health checks
 		server.WithHealthChecks(healthChecker),
+		// register metrics
+		server.WithHandler("/metrics", promhttp.Handler()),
 	)
 	if err != nil {
 		return err

@@ -10,7 +10,9 @@ imagePullSecretsName:
 replicaCount: 1
 
 # additional annotations to add to the pods
-podAnnotations: {}
+podAnnotations:
+  prometheus.io/port: "internal"
+  prometheus.io/scrape: 'true'
 
 # additional labels to add to the pods
 podLabels: {}
@@ -30,6 +32,9 @@ service:
   port: 8080
   logging_level: "debug"
   aws_region: "us-east-1"
+
+internal:
+  port: 5555
 
 resources:
   limits:
