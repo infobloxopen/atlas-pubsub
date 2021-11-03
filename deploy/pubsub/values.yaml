@@ -12,7 +12,7 @@ replicaCount: 1
 # additional annotations to add to the pods
 podAnnotations:
   prometheus.io/port: "internal"
-  prometheus.io/scrape: 'true'
+  prometheus.io/scrape: "true"
 
 # additional labels to add to the pods
 podLabels: {}

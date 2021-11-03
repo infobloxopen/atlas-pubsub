@@ -68,7 +68,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /health
-              port: {{ /Values.internal.port }}
+              port: {{ .Values.internal.port }}
               scheme: HTTP
             initialDelaySeconds: 3
             timeoutSeconds: 10
