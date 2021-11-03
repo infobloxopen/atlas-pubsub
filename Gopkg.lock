@@ -446,7 +446,6 @@
     "github.com/golang/protobuf/proto",
     "github.com/golang/protobuf/ptypes/wrappers",
     "github.com/google/uuid",
-    "github.com/grpc-ecosystem/go-grpc-middleware",
     "github.com/grpc-ecosystem/go-grpc-prometheus",
     "github.com/infobloxopen/atlas-app-toolkit/health",
     "github.com/infobloxopen/atlas-app-toolkit/logging",

@@ -12,7 +12,6 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
@@ -53,9 +52,7 @@ func main() {
 	grpcServer := grpc.NewServer(
 		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{MinTime: time.Millisecond, PermitWithoutStream: true}),
 		grpc.UnaryInterceptor(
-			grpc_middleware.ChainUnaryServer(
-				grpc_prometheus.UnaryServerInterceptor,
-			),
+			grpc_prometheus.UnaryServerInterceptor,
 		),
 	)
 
