@@ -55,6 +55,7 @@ func main() {
 			grpc_prometheus.UnaryServerInterceptor,
 		),
 	)
+	grpc_prometheus.EnableHandlingTimeHistogram()
 
 	pubsubServer, err := newAWSPubSubServer(logger)
 	if err != nil {
