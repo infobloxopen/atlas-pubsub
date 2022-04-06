@@ -1,9 +1,9 @@
-FROM alpine:3.15
+FROM alpine:latest
 
 COPY bin/pubsub /usr/local/bin/pubsub
 
 # Allows to verify certificates
-RUN apk update --no-cache && apk add --no-cache ca-certificates && apk upgrade
+RUN apk update --no-cache && apk add --no-cache ca-certificates
 
 ENV AWS_REGION us-east-1
 
