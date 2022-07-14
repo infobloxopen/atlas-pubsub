@@ -199,7 +199,7 @@ func (m *awsMessage) Ack() error {
 // * other stuff?
 func (s *awsSubscriber) ensureSubscription(topic, subscriptionID string) error {
 	logStatus := func(step string) {
-		s.logger.Infof("AWS: %s for topic %q, subID %q", step, topic, subscriptionID)
+		s.logger.Tracef("AWS: %s for topic %q, subID %q", step, topic, subscriptionID)
 	}
 	queueName, err := buildAWSQueueName(topic, subscriptionID)
 	if err != nil {
@@ -230,6 +230,7 @@ func (s *awsSubscriber) ensureSubscription(topic, subscriptionID string) error {
 		return err
 	}
 
+	s.logger.Infof("AWS: succeed for topic %q, subID %q", topic, subscriptionID)
 	return nil
 }
 
