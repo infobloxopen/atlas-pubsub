@@ -230,7 +230,7 @@ func (s *awsSubscriber) ensureSubscription(topic, subscriptionID string) error {
 		return err
 	}
 
-	s.logger.Infof("AWS: succeed for topic %q, subID %q", topic, subscriptionID)
+	s.logger.Infof("AWS: subscription configured for topic %q, subID %q", topic, subscriptionID)
 	return nil
 }
 
