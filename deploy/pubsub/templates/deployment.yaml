@@ -6,6 +6,10 @@ apiVersion: v1
 metadata:
   name: pubsub
   namespace: {{ .Release.Namespace }}
+  {{- with .Values.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 imagePullSecrets:
 - name: {{ tpl .Values.imagePullSecretsName . }}
 {{ end }}

@@ -43,3 +43,7 @@ resources:
   requests:
     cpu: 200m
     memory: 400Mi
+
+serviceAccount:
+  # Annotations to add to the service account
+  annotations: {}
