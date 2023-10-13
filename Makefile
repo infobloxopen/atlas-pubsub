@@ -74,12 +74,12 @@ show-image-name:
 # --- Docker commands ---
 # Builds the docker image
 image:
-	@docker build -t $(IMAGE_NAME) -f docker/Dockerfile .
+	@docker build --pull -t $(IMAGE_NAME) -f docker/Dockerfile .
 
 # Builds the hello example images 
 image-example: 
-	@docker build -t $(IMAGE_NAME_PUB) -f docker/Dockerfile.publisher .
-	@docker build -t $(IMAGE_NAME_SUB) -f docker/Dockerfile.subscriber .
+	@docker build --pull -t $(IMAGE_NAME_PUB) -f docker/Dockerfile.publisher .
+	@docker build --pull -t $(IMAGE_NAME_SUB) -f docker/Dockerfile.subscriber .
 
 # Pushes the image to docker
 push: image

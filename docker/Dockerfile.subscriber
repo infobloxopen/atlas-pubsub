@@ -1,4 +1,4 @@
-FROM alpine:3.5
+FROM alpine:latest
 
 COPY bin/pubsub-sub /usr/local/bin/pubsub-sub
 
