@@ -5,4 +5,6 @@ COPY bin/pubsub-sub /usr/local/bin/pubsub-sub
 # Allows to verify certificates
 RUN apk update --no-cache && apk add --no-cache ca-certificates
 
+RUN apk upgrade
+
 ENTRYPOINT ["/usr/local/bin/pubsub-sub"]
