@@ -1,4 +1,4 @@
-FROM alpine:latest
+FROM cgr.dev/chainguard/wolfi-base:latest
 
 COPY bin/pubsub /usr/local/bin/pubsub
 
