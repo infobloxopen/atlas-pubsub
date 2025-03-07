@@ -1,5 +1,9 @@
 VERSION := $(shell git describe --dirty=-dirty --always --long --tags)
 
+
+#hello
+#test
+
 APP_NAME := atlas.pubsub
 
 # Absolute github repository name.
