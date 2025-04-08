@@ -68,10 +68,10 @@ func verifyPermissions(subscriber *awsSubscriber, publisher *publisher, log *log
 		// Delete subscription and subscriber queue
 		log.Println("verify permissions: deleting subscription")
 		if err := subscriber.unsubscribe(); err != nil {
-			log.Fatalf("verify permissions: error unsubscribing: %v", err)
+			log.Errorf("verify permissions: error unsubscribing: %v", err)
 		}
 		if err := subscriber.deleteQueue(); err != nil {
-			log.Fatalf("verify permissions: error deleting queue: %v", err)
+			log.Errorf("verify permissions: error deleting queue: %v", err)
 		}
 	}()
 
