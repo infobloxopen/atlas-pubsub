@@ -32,4 +32,6 @@ var (
 	flagInternalReadiness = pflag.String("internal.readiness", defaultInternalReadiness, "endpoint for readiness checks")
 
 	flagLoggingLevel = pflag.String("logging.level", defaultLoggingLevel, "log level of application")
+
+	flagSkipVerify = pflag.Bool("skip.verify.permissions", false, "skip verify permissions for AWS credentials")
 )

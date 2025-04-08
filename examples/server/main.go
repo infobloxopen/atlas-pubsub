@@ -79,12 +79,13 @@ func newAWSPubSubServer(logger *logrus.Logger) (pubsubgrpc.PubSubServer, error) 
 		SharedConfigState:       session.SharedConfigEnable,
 	}))
 	// Checks to see if aws config credentials are valid
-	logger.Print("checking server for AWS permissions")
-	if err := pubsubaws.VerifyPermissions(sess, logger); err != nil {
-		logger.Fatalf("AWS permissions check failed: %v", err)
+	if !viper.GetBool("skip.verify.permissions") {
+		logger.Print("checking server for AWS permissions")
+		if err := pubsubaws.VerifyPermissions(sess, logger); err != nil {
+			logger.Fatalf("AWS permissions check failed: %v", err)
+		}
+		logger.Print("server has proper AWS permissions")
 	}
-	logger.Print("server has proper AWS permissions")
-
 	pubFactory := func(ctx context.Context, topic string) (pubsub.Publisher, error) {
 		return pubsubaws.NewPublisher(sess, topic, pubsubaws.PublishWithLogger(logger))
 	}
