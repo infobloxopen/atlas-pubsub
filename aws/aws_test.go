@@ -346,3 +346,56 @@ func TestDecodeMessageAttributes(t *testing.T) {
 		}
 	}
 }
+
+// TestEnsureTopic verifies the ensureTopic function correctly handles same-account and cross-account scenarios
+func TestEnsureTopic(t *testing.T) {
+	testCases := []struct {
+		name           string
+		topic          string
+		targetAccount  string
+		expectedPrefix string
+	}{
+		{
+			name:           "same account",
+			topic:          "test-topic",
+			targetAccount:  "",
+			expectedPrefix: "some fake topic arn", // Mock SNS will return this
+		},
+		{
+			name:           "cross account",
+			topic:          "test-topic",
+			targetAccount:  "123456789012",
+			expectedPrefix: fmt.Sprintf("arn:aws:sns:%s:123456789012:pubsub__test-topic", getRegion()),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			snsMock := mockSNS{}
+			topicArn, err := ensureTopic(tc.topic, &snsMock, tc.targetAccount)
+
+			if err != nil {
+				t.Errorf("ensureTopic returned error: %v", err)
+			}
+
+			if topicArn == nil {
+				t.Error("expected non-nil topicArn, got nil")
+				return
+			}
+
+			// For cross-account, we should construct the ARN directly
+			if tc.targetAccount != "" && snsMock.spiedCreateTopicInput != nil {
+				t.Error("expected CreateTopic not to be called for cross-account")
+			}
+
+			// For same-account, we should call CreateTopic
+			if tc.targetAccount == "" && snsMock.spiedCreateTopicInput == nil {
+				t.Error("expected CreateTopic to be called for same-account")
+			}
+
+			if !strings.HasPrefix(*topicArn, tc.expectedPrefix) {
+				t.Errorf("expected topic ARN to start with %q, got %q", tc.expectedPrefix, *topicArn)
+			}
+		})
+	}
+}

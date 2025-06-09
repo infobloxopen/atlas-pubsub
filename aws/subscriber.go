@@ -3,6 +3,7 @@ package aws
 import (
 	"context"
 	"errors"
+	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -35,7 +36,22 @@ func NewSubscriber(sess *session.Session, topic, subscriptionID string, opts ...
 }
 
 func newSubscriber(snsClient snsiface.SNSAPI, sqsClient sqsiface.SQSAPI, topic, subscriptionID string, opts ...SubscriberOption) (*awsSubscriber, error) {
-	subscriber := awsSubscriber{sns: snsClient, sqs: sqsClient, topic: topic, subscriptionID: subscriptionID, logger: logrus.StandardLogger()}
+	subscriber := awsSubscriber{
+		sns:            snsClient,
+		sqs:            sqsClient,
+		topic:          topic,
+		subscriptionID: subscriptionID,
+		logger:         logrus.StandardLogger(),
+	}
+
+	// Check for target account ID in environment variable
+	envTargetAccountID := os.Getenv(EnvTargetAWSAccountID)
+	if envTargetAccountID != "" {
+		subscriber.targetAccountID = envTargetAccountID
+		subscriber.logger.Infof("AWS: using cross-account subscription for target account ID %s", envTargetAccountID)
+	}
+
+	// Apply options
 	for _, opt := range opts {
 		opt(&subscriber)
 	}
@@ -57,6 +73,7 @@ type awsSubscriber struct {
 	queueArn        *string
 	topicArn        *string
 	subscriptionArn *string
+	targetAccountID string
 
 	logger *logrus.Logger
 }
@@ -211,9 +228,8 @@ func (s *awsSubscriber) ensureSubscription(topic, subscriptionID string) error {
 	if err != nil {
 		return err
 	}
-	// create the topic if needed
 	logStatus("ensuring SNS topic exists")
-	s.topicArn, err = ensureTopic(topic, s.sns)
+	s.topicArn, err = ensureTopic(topic, s.sns, s.targetAccountID)
 	if err != nil {
 		return err
 	}
