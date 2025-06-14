@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -150,12 +151,21 @@ func buildAWSQueueName(topic, subscriptionID string) (*string, error) {
 }
 
 // ensureTopic takes a topic name and returns the topicArn, creating the SNS
-// topic if necessary
-func ensureTopic(topic string, snsClient snsiface.SNSAPI) (*string, error) {
+// topic if necessary. If targetAccountID is provided, it constructs a cross-account ARN.
+func ensureTopic(topic string, snsClient snsiface.SNSAPI, targetAccountID string) (*string, error) {
 	scrubbedTopic, nameErr := buildAWSTopicName(topic)
 	if nameErr != nil {
 		return nil, nameErr
 	}
+
+	// Handle cross-account scenario
+	if targetAccountID != "" {
+		// Construct ARN for the cross-account topic
+		crossAccountArn := fmt.Sprintf("arn:aws:sns:%s:%s:%s", getRegion(), targetAccountID, *scrubbedTopic)
+		return &crossAccountArn, nil
+	}
+
+	// Same account scenario - create the topic
 	topicResp, topicErr := snsClient.CreateTopic(&sns.CreateTopicInput{Name: scrubbedTopic})
 	if topicErr != nil {
 		return nil, topicErr
@@ -357,4 +367,13 @@ func decodeMessageAttributes(sqsMessage *string) (map[string]string, error) {
 		}
 	}
 	return decoded, nil
+}
+
+// getRegion reads the region from AWS_REGION environment variable or returns the default ("us-east-1")
+func getRegion() string {
+	region := os.Getenv("AWS_REGION")
+	if region == "" {
+		region = "us-east-1" // Default region if not specified
+	}
+	return region
 }

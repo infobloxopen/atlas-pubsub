@@ -48,6 +48,8 @@ spec:
           env:
           - name: AWS_REGION
             value: {{ .Values.service.aws_region }}
+          - name: TARGET_AWS_ACCOUNT_ID
+            value: {{ .Values.aws.targetAccountID | default "" | quote }}
           ports:
             - name: grpc
               containerPort: {{ .Values.service.port }}

@@ -2,6 +2,7 @@ package aws
 
 import (
 	"context"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -10,6 +11,8 @@ import (
 	pubsub "github.com/infobloxopen/atlas-pubsub"
 	"github.com/sirupsen/logrus"
 )
+
+const EnvTargetAWSAccountID = "TARGET_AWS_ACCOUNT_ID"
 
 type PublisherOption func(*publisher)
 
@@ -35,24 +38,31 @@ func newPublisher(snsClient snsiface.SNSAPI, topic string, opts ...PublisherOpti
 		sns:    snsClient,
 		logger: logrus.StandardLogger(),
 	}
+
+	// Check for target account ID in environment variable
+	envTargetAccountID := os.Getenv(EnvTargetAWSAccountID)
+	if envTargetAccountID != "" {
+		p.targetAccountID = envTargetAccountID
+		p.logger.Infof("AWS: using cross-account publisher for target account ID %s", envTargetAccountID)
+	}
+
+	// Apply options
 	for _, opt := range opts {
 		opt(&p)
 	}
-
-	p.logger.Infof("AWS: ensuring SNS topic exists for %q", topic)
-	topicArn, err := ensureTopic(topic, snsClient)
+	topicArn, err := ensureTopic(topic, snsClient, p.targetAccountID)
 	if err != nil {
 		return nil, err
 	}
 	p.topicArn = *topicArn
-
 	return &p, nil
 }
 
 type publisher struct {
-	sns      snsiface.SNSAPI
-	topicArn string
-	logger   *logrus.Logger
+	sns             snsiface.SNSAPI
+	topicArn        string
+	logger          *logrus.Logger
+	targetAccountID string
 }
 
 func (p publisher) Publish(ctx context.Context, msg []byte, metadata map[string]string) error {

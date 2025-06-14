@@ -21,6 +21,12 @@ env:
   name: "AWS_REGION"
   value: "us-east-1"
 
+# AWS configuration
+aws:
+  # Target AWS account ID for cross-account SNS/SQS communication
+  # If specified, all publishers and subscribers will use this account ID for topic ARNs
+  targetAccountID: ""
+
 image:
   repository: "infobloxcto"
   name: "atlas.pubsub"
