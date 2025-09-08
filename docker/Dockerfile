@@ -1,15 +1,13 @@
-FROM cgr.dev/chainguard/wolfi-base:latest
+FROM gcr.io/distroless/static-debian12:nonroot-amd64
 
 COPY bin/pubsub /usr/local/bin/pubsub
 
-# Allows to verify certificates
-RUN apk update --no-cache && apk add --no-cache ca-certificates
-
-RUN apk upgrade
-
-ENV AWS_REGION us-east-1
+ENV AWS_REGION=us-east-1
 
 # gRPC port
 EXPOSE 80
+
+# Run as non-root user
+USER nonroot
 
 ENTRYPOINT ["/usr/local/bin/pubsub"]
