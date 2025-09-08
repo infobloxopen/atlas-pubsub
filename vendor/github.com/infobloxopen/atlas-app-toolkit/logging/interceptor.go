@@ -69,7 +69,7 @@ func UnaryClientInterceptor(entry *logrus.Entry, opts ...Option) grpc.UnaryClien
 		startTime := time.Now()
 		fields := newLoggerFields(method, startTime, DefaultClientKindValue)
 
-		setInterceptorFields(ctx, fields, entry.Logger, options, startTime)
+		setClientInterceptorFields(ctx, fields, entry.Logger, options, startTime)
 
 		err := invoker(ctx, method, req, reply, cc, opts...)
 		if err != nil {
@@ -95,7 +95,7 @@ func StreamClientInterceptor(entry *logrus.Entry, opts ...Option) grpc.StreamCli
 		startTime := time.Now()
 		fields := newLoggerFields(method, startTime, DefaultClientKindValue)
 
-		setInterceptorFields(ctx, fields, entry.Logger, options, startTime)
+		setClientInterceptorFields(ctx, fields, entry.Logger, options, startTime)
 
 		clientStream, err := streamer(ctx, desc, cc, method, option...)
 		if err != nil {
@@ -114,66 +114,50 @@ func StreamClientInterceptor(entry *logrus.Entry, opts ...Option) grpc.StreamCli
 	}
 }
 
-func UnaryServerInterceptor(entry *logrus.Entry, opts ...Option) grpc.UnaryServerInterceptor {
+func CustomFieldsUnaryServerInterceptor(entry *logrus.Entry, opts ...Option) grpc.UnaryServerInterceptor {
 	options := initOptions(opts)
 
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		startTime := time.Now()
-		fields := newLoggerFields(info.FullMethod, startTime, DefaultServerKindValue)
+		fields := logrus.Fields{}
+		setInterceptorFields(ctx, fields, entry.Logger, options)
+		ctxlogrus.AddFields(ctx, fields)
+		return handler(ctx, req)
+	}
+}
 
-		setInterceptorFields(ctx, fields, entry.Logger, options, startTime)
+func UnaryServerInterceptor(entry *logrus.Entry, opts ...Option) grpc.UnaryServerInterceptor {
+	return grpc_middleware.ChainUnaryServer(
+		grpc_logrus.UnaryServerInterceptor(entry),
+		requestid.UnaryServerInterceptor(),
+		auth.LogrusUnaryServerInterceptor(),
+		CustomFieldsUnaryServerInterceptor(entry, opts...),
+	)
+}
 
-		newCtx := newLoggerForCall(ctx, entry, fields)
+func CustomFieldsStreamServerInterceptor(entry *logrus.Entry, opts ...Option) grpc.StreamServerInterceptor {
+	options := initOptions(opts)
 
-		resp, err := handler(newCtx, req)
-		if err != nil {
-			fields[logrus.ErrorKey] = err
-		}
-
-		code := status.Code(err)
-		fields[DefaultGRPCCodeKey] = code.String()
-
-		levelLogf(
-			ctxlogrus.Extract(newCtx).WithFields(fields),
-			options.codeToLevel(code),
-			"finished unary call with code %s", code.String())
-
-		return resp, err
+	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		fields := logrus.Fields{}
+		newCtx := stream.Context()
+		setInterceptorFields(newCtx, fields, entry.Logger, options)
+		ctxlogrus.AddFields(newCtx, fields)
+		wrapped := grpc_middleware.WrapServerStream(stream)
+		wrapped.WrappedContext = newCtx
+		return handler(srv, wrapped)
 	}
 }
 
 func StreamServerInterceptor(entry *logrus.Entry, opts ...Option) grpc.StreamServerInterceptor {
-	options := initOptions(opts)
-
-	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		startTime := time.Now()
-		fields := newLoggerFields(info.FullMethod, startTime, DefaultServerKindValue)
-
-		setInterceptorFields(stream.Context(), fields, entry.Logger, options, startTime)
-
-		newCtx := newLoggerForCall(stream.Context(), entry, fields)
-
-		wrapped := grpc_middleware.WrapServerStream(stream)
-		wrapped.WrappedContext = newCtx
-
-		err := handler(srv, wrapped)
-		if err != nil {
-			fields[logrus.ErrorKey] = err
-		}
-
-		code := status.Code(err)
-		fields[DefaultGRPCCodeKey] = code.String()
-
-		levelLogf(
-			ctxlogrus.Extract(newCtx).WithFields(fields),
-			options.codeToLevel(code),
-			"finished server streaming call with code %s", code.String())
-
-		return err
-	}
+	return grpc_middleware.ChainStreamServer(
+		grpc_logrus.StreamServerInterceptor(entry),
+		requestid.StreamServerInterceptor(),
+		auth.LogrusStreamServerInterceptor(),
+		CustomFieldsStreamServerInterceptor(entry, opts...),
+	)
 }
 
-func setInterceptorFields(ctx context.Context, fields logrus.Fields, logger *logrus.Logger, options *options, start time.Time) {
+func setClientInterceptorFields(ctx context.Context, fields logrus.Fields, logger *logrus.Logger, options *options, start time.Time) {
 	// In latest versions of Go use
 	// https://golang.org/src/time/time.go?s=25178:25216#L780
 	duration := int64(time.Since(start) / 1e6)
@@ -186,24 +170,24 @@ func setInterceptorFields(ctx context.Context, fields logrus.Fields, logger *log
 
 	err = addAccountIDField(ctx, fields)
 	if err != nil {
-		logger.Warn(err)
+		logger.Info(err)
 	}
+	setInterceptorFields(ctx, fields, logger, options)
+}
 
-	err = addCustomField(ctx, fields, DefaultSubjectKey)
-	if err != nil {
+func setInterceptorFields(ctx context.Context, fields logrus.Fields, logger *logrus.Logger, options *options) {
+	if err := addCustomField(ctx, fields, DefaultSubjectKey); err != nil {
 		logger.Warn(err)
 	}
 
 	for _, v := range options.fields {
-		err = addCustomField(ctx, fields, v)
-		if err != nil {
+		if err := addCustomField(ctx, fields, v); err != nil {
 			logger.Warn(err)
 		}
 	}
 
 	for _, v := range options.headers {
-		err = addHeaderField(ctx, fields, v)
-		if err != nil {
+		if err := addHeaderField(ctx, fields, v); err != nil {
 			logger.Warn(err)
 		}
 	}
@@ -221,19 +205,24 @@ func addRequestIDField(ctx context.Context, fields logrus.Fields) error {
 }
 
 func addAccountIDField(ctx context.Context, fields logrus.Fields) error {
-	accountID, err := auth.GetAccountID(ctx, nil)
-	if err != nil {
+	if accountID, err := auth.GetAccountID(ctx, nil); err == nil {
+		fields[DefaultAccountIDKey] = accountID
+	} else {
+		fields[DefaultAccountIDKey] = valueUndefined
 		return fmt.Errorf("Unable to get %q from context", DefaultAccountIDKey)
 	}
 
-	fields[DefaultAccountIDKey] = accountID
-
-	return err
+	return nil
 }
 
 func addCustomField(ctx context.Context, fields logrus.Fields, customField string) error {
 	field, err := auth.GetJWTField(ctx, customField, nil)
 	if err != nil {
+		if customField == DefaultSubjectKey {
+			// non client token does not have subject ingore
+			return nil
+		}
+
 		return fmt.Errorf("Unable to get custom %q field from context", customField)
 	}
 
@@ -290,13 +279,6 @@ func newLoggerFields(fullMethodString string, start time.Time, kind string) logr
 		DefaultGRPCMethodKey:    method,
 		DefaultGRPCStartTimeKey: start.Format(time.RFC3339Nano),
 	}
-}
-
-func newLoggerForCall(ctx context.Context, entry *logrus.Entry, fields logrus.Fields) context.Context {
-	callLog := entry.WithFields(fields)
-	callLog = callLog.WithFields(ctxlogrus.Extract(ctx).Data)
-
-	return ctxlogrus.ToContext(ctx, callLog)
 }
 
 // CopyLoggerWithLevel makes a copy of the given (logrus) logger at the logger

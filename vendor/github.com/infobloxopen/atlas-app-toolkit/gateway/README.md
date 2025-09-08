@@ -39,18 +39,18 @@ This enables the following two alternative HTTP JSON to RPC mappings:
 
 ## HTTP Headers
 
-Your application or service might depend on HTTP headers from incoming REST requests. The official gRPC gateway documentation describes how to handle HTTP headers in detail, so check out the documentation [here](https://grpc-ecosystem.github.io/grpc-gateway/docs/customizingyourgateway.html).
+Your application or service might depend on HTTP headers from incoming REST requests. The official gRPC gateway documentation describes how to handle HTTP headers in detail, so check out the documentation [here](https://grpc-ecosystem.github.io/grpc-gateway/docs/mapping/customizing_your_gateway/).
 
 ### Using Headers in gRPC Service
 
-To extract headers from metadata, you can use the [`FromIncomingContext`](https://godoc.org/google.golang.org/grpc/metadata#FromIncomingContext) function.
+To extract headers from metadata, you can use the [`FromIncomingContext`](https://pkg.go.dev/google.golang.org/grpc/metadata#FromIncomingContext) function.
 
 ```go
 import (
     "context"
 
     "google.golang.org/grpc/metadata"
-    "github.com/grpc-ecosystem/grpc-gateway/runtime"
+    "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 )
 
 func (s *myServiceImpl) MyMethod(ctx context.Context, req *MyRequest) (*MyResponse, error) {
@@ -143,7 +143,22 @@ func init() {
 We made default [`ForwardResponseMessageFunc`](response.go#L21) and [`ForwardResponseStreamFunc`](response.go#L21)
 implementations that conform to Infoblox's REST API Syntax guidelines. These helper functions ensure that Infoblox teams who use toolkit follow the same REST API conventions. For non-Infoblox toolkit users, these are completely optional utilities.
 
-_Note: the forwarders still set `200 - OK` as HTTP status code if no errors are encountered._
+The forwarders set the response status based on the type of request made, using a couple
+of global configuration settings
+```
+OldStatusCreatedOnUpdate (default false)
+StatusFromMethod (default true)
+```
+When StatusFromMethod is true, if no status code is explicitly set using the
+functions described below, it will populate the responses based on the REST verb as follows.
+The output for PUT/PATCH is dependent on the `OldStatusCreatedOnUpdate` value.
+```
+GET = 200 OK
+POST = 201 CREATED
+PUT/PATCH = 201 UPDATED (OldStatusCreatedOnUpdate=true)
+PUT/PATCH = 200 UPDATED (OldStatusCreatedOnUpdate=false)
+DELETE = 204 DELETED
+```
 
 ### Setting HTTP Status Codes
 
@@ -349,7 +364,7 @@ Here's an example that shows how to use [`DefaultProtoErrorHandler`](gateway/err
 
 ```go
 import (
-    "github.com/grpc-ecosystem/grpc-gateway/runtime"
+    "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
     "github.com/infobloxopen/atlas-app-toolkit/gateway"
 
     "github.com/yourrepo/yourapp"
@@ -357,7 +372,7 @@ import (
 
 func main() {
     // create error handler option
-    errHandler := runtime.WithProtoErrorHandler(gateway.DefaultProtoErrorHandler)
+    errHandler := runtime.WithErrorHandler(gateway.DefaultProtoErrorHandler)
 
     // pass that option as a parameter
     mux := runtime.NewServeMux(errHandler)

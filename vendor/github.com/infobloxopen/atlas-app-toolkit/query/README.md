@@ -7,6 +7,7 @@ These types are:
 - `infoblox.api.Pagination`
 - `infoblox.api.PageInfo`(used in response)
 - `infoblox.api.FieldSelection`
+- `infoblox.api.Searching`
 
 ## Enabling *collection operators* in your application
 
@@ -22,6 +23,7 @@ message MyListRequest {
     infoblox.api.Sorting sorting = 2;
     infoblox.api.Pagination pagination = 3;
     infoblox.api.FieldSelection fields = 4;
+    infoblox.api.Searching searching = 5;
 }
 ```
 
@@ -89,14 +91,14 @@ Consider that you have a following object where `info` field is a `jsonb` field:
 Filterting request with `jsonb` query will look like:
 ```
 ...?_filter=info.Address.City=='Tacoma'
-``` 
+```
 if you want to compare enclosed object with json you are able to write:
 ```
 ...?_filter=info.Address=='{"City": "Tacoma", "Country": "USA"}'
 ```
 
-Note: if you decide to use toolkit provided `infoblox.api.Filtering` proto type, then you'll not be able to use [vanilla](https://github.com/grpc-ecosystem/grpc-gateway/tree/master/protoc-gen-swagger) swagger schema generation, since this plugin doesn't work with recursive nature of `infoblox.api.Filtering`.
-In this case you can use our [fork](https://github.com/infobloxopen/grpc-gateway/tree/atlas-patch/protoc-gen-swagger) which has a fix for this issue. 
+Note: if you decide to use toolkit provided `infoblox.api.Filtering` proto type, then you'll not be able to use [vanilla](https://github.com/grpc-ecosystem/grpc-gateway/tree/master/protoc-gen-openapiv2) swagger schema generation, since this plugin doesn't work with recursive nature of `infoblox.api.Filtering`.
+In this case you can use our [fork](https://github.com/infobloxopen/grpc-gateway/tree/v2/protoc-gen-openapiv2) which has a fix for this issue.
 You can also use [atlas-gentool](https://github.com/infobloxopen/atlas-gentool) which contains both versions of the plugin.
 
 ## Sorting
@@ -137,7 +139,7 @@ This is done by `gateway.ResponseForwarder`.
 Using the toolkit's [server](../server) package functionality, you can optionally enable automatic filling of a `google.protobuf.FieldMask` within the gRPC Gateway.
 
 As a prerequisite, the request passing through the gateway must match the list
-of given HTTP methods (e.g. POST, PUT, PATCH) and contain a FieldMask at the 
+of given HTTP methods (e.g. POST, PUT, PATCH) and contain a FieldMask at the
 top level.
 ```proto
 import "google/protobuf/field_mask.proto";
@@ -162,3 +164,38 @@ server.WithGateway(
   )
 )
 ```
+## Searching
+
+The syntax of REST representation of `infoblox.api.Searching` is the following.
+
+| Request Parameter | Description                              |
+| ----------------- |------------------------------------------|
+| _fts              | A string expression which performs a full-text-search on the DB |
+
+Full-text-search is an optimized mechanism to retrieve data from the DB efficiently when the user is only aware of some portion of the data they are searching.
+
+#### Example:
+Consider that you have the following objects:
+```
+{
+ name: "my first object",
+ city: "Santa Clara",
+ country: "USA"
+},
+{
+ name: "my second object",
+ city: "Tacoma",
+ country: "USA"
+}
+```
+If "name" is provided as a field for FTS, the Searching query will look like:
+```
+...?_fts=my first object
+```
+In this case, only the first object would be returned.
+
+If "country" is provided as a field for FTS, the Searching query will look like:
+```
+...?_fts=USA
+```
+In this case, both the objects would be returned.

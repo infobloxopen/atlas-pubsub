@@ -11,8 +11,17 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 )
+
+// OldStatesCreatedOnUpdate if true will return http.StatusCreated from HTTPStatusFromCode
+// function if gRPC code is equal to Updated. This variable should only be set in an init()
+// function by code that vendors this library.
+var OldStatusCreatedOnUpdate = false
+
+// StatusFromMethod if true will cause the HTTP code returned to be set depending
+// on the HTTP method, ex. a 201 for POST as a "create" operation
+var StatusFromMethod = true
 
 const (
 	// These custom codes defined here to conform REST API Syntax
@@ -86,6 +95,40 @@ func HTTPStatus(ctx context.Context, st *status.Status) (int, string) {
 	return httpCode, statusName
 }
 
+// HTTPStatusWithMethod returns REST representation of gRPC status.
+// If status.Status is not nil it will be converted in accordance with REST
+// API Syntax otherwise context will be used to extract
+// `grpcgateway-status-code` from gRPC metadata.
+// If `grpcgateway-status-code` is not set it falls back on the method string
+// provided, using default expectations for POST, PUT/PATCH, and DELETE verbs
+func HTTPStatusWithMethod(ctx context.Context, method string, st *status.Status) (int, string) {
+
+	if st != nil {
+		httpStatus := HTTPStatusFromCode(st.Code())
+
+		return httpStatus, CodeName(st.Code())
+	}
+	statusName := CodeName(codes.OK)
+	if sc, ok := Header(ctx, "status-code"); ok {
+		statusName = sc
+	} else if StatusFromMethod {
+		switch method {
+		case http.MethodPost:
+			statusName = CodeName(Created)
+		case http.MethodPut, http.MethodPatch:
+			statusName = CodeName(Updated)
+		case http.MethodDelete:
+			statusName = CodeName(Deleted)
+		default:
+			statusName = CodeName(codes.OK)
+		}
+	}
+
+	httpCode := HTTPStatusFromCode(Code(statusName))
+
+	return httpCode, statusName
+}
+
 // CodeName returns stringname of gRPC code, function handles as standard
 // codes from "google.golang.org/grpc/codes" as well as custom ones defined
 // in this package.
@@ -151,6 +194,9 @@ func HTTPStatusFromCode(code codes.Code) int {
 	case Created:
 		return http.StatusCreated
 	case Updated:
+		if OldStatusCreatedOnUpdate {
+			return http.StatusCreated
+		}
 		return http.StatusOK
 	case Deleted:
 		return http.StatusNoContent

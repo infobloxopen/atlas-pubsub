@@ -1,10 +1,16 @@
-FROM cgr.dev/chainguard/wolfi-base:latest
+# Build stage
+FROM golang:1.25-alpine3.21 AS builder
+LABEL stage=pubsub-sub-intermediate
+WORKDIR /go/src/github.com/infobloxopen/atlas-pubsub
 
-COPY bin/pubsub-sub /usr/local/bin/pubsub-sub
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o bin/pubsub-sub ./examples/hello/subscriber
 
-# Allows to verify certificates
-RUN apk update --no-cache && apk add --no-cache ca-certificates
+# Final runtime image using distroless
+FROM gcr.io/distroless/static-debian12:nonroot-amd64 AS runner
+WORKDIR /app
+COPY --from=builder /go/src/github.com/infobloxopen/atlas-pubsub/bin/pubsub-sub /app/pubsub-sub
 
-RUN apk upgrade
+USER nonroot
 
-ENTRYPOINT ["/usr/local/bin/pubsub-sub"]
+ENTRYPOINT ["/app/pubsub-sub"]

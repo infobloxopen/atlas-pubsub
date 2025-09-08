@@ -11,13 +11,13 @@ import (
 // that should be used as a middleware to generate/include Request-Id in headers and context
 // for tracing and tracking user's request.
 //
-//
 // Returned middleware populates Request-Id from gRPC metadata if
 // they defined in a testRequest message else creates a new one.
 func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (res interface{}, err error) {
 
 		reqID := HandleRequestID(ctx)
+
 		// add request id to logger
 		addRequestIDToLogger(ctx, reqID)
 
@@ -36,6 +36,7 @@ func StreamServerInterceptor() grpc.StreamServerInterceptor {
 		ctx := stream.Context()
 
 		reqID := HandleRequestID(ctx)
+
 		// add request id to logger
 		addRequestIDToLogger(ctx, reqID)
 

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/infobloxopen/atlas-app-toolkit/query"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -74,6 +74,15 @@ func ClientUnaryInterceptor(parentCtx context.Context, method string, req, reply
 			}
 		}
 
+		// extracts "_fts" parameters from request
+		if v := vals.Get(searchQueryKey); v != "" {
+			s := query.ParseSearching(v)
+			err = SetCollectionOps(req, s)
+			if err != nil {
+				return err
+			}
+		}
+
 		// extracts "_limit", "_offset",  "_page_token" parameters from request
 		var p *query.Pagination
 		l := vals.Get(limitQueryKey)
@@ -114,7 +123,7 @@ func NewGateway(options ...Option) (*http.ServeMux, error) {
 func (g gateway) registerEndpoints() (*http.ServeMux, error) {
 	for prefix, registers := range g.endpoints {
 		gwmux := runtime.NewServeMux(
-			append([]runtime.ServeMuxOption{runtime.WithProtoErrorHandler(ProtoMessageErrorHandler),
+			append([]runtime.ServeMuxOption{runtime.WithErrorHandler(ProtoMessageErrorHandler),
 				runtime.WithMetadata(MetadataAnnotator)}, g.gatewayMuxOptions...)...,
 		)
 		for _, register := range registers {

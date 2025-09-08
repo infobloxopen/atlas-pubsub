@@ -86,7 +86,7 @@ func clockSequence() int {
 	return int(clockSeq & 0x3fff)
 }
 
-// SetClockSeq sets the clock sequence to the lower 14 bits of seq.  Setting to
+// SetClockSequence sets the clock sequence to the lower 14 bits of seq.  Setting to
 // -1 causes a new sequence to be generated.
 func SetClockSequence(seq int) {
 	defer timeMu.Unlock()
@@ -100,20 +100,31 @@ func setClockSequence(seq int) {
 		randomBits(b[:]) // clock sequence
 		seq = int(b[0])<<8 | int(b[1])
 	}
-	old_seq := clockSeq
+	oldSeq := clockSeq
 	clockSeq = uint16(seq&0x3fff) | 0x8000 // Set our variant
-	if old_seq != clockSeq {
+	if oldSeq != clockSeq {
 		lasttime = 0
 	}
 }
 
 // Time returns the time in 100s of nanoseconds since 15 Oct 1582 encoded in
-// uuid.  The time is only defined for version 1 and 2 UUIDs.
+// uuid.  The time is only defined for version 1, 2, 6 and 7 UUIDs.
 func (uuid UUID) Time() Time {
-	time := int64(binary.BigEndian.Uint32(uuid[0:4]))
-	time |= int64(binary.BigEndian.Uint16(uuid[4:6])) << 32
-	time |= int64(binary.BigEndian.Uint16(uuid[6:8])&0xfff) << 48
-	return Time(time)
+	var t Time
+	switch uuid.Version() {
+	case 6:
+		time := binary.BigEndian.Uint64(uuid[:8]) // Ignore uuid[6] version b0110
+		t = Time(time)
+	case 7:
+		time := binary.BigEndian.Uint64(uuid[:8])
+		t = Time((time>>16)*10000 + g1582ns100)
+	default: // forward compatible
+		time := int64(binary.BigEndian.Uint32(uuid[0:4]))
+		time |= int64(binary.BigEndian.Uint16(uuid[4:6])) << 32
+		time |= int64(binary.BigEndian.Uint16(uuid[6:8])&0xfff) << 48
+		t = Time(time)
+	}
+	return t
 }
 
 // ClockSequence returns the clock sequence encoded in uuid.

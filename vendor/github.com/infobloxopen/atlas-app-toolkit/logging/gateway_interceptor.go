@@ -5,7 +5,7 @@ import (
 	"path"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	jwt "github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus/ctxlogrus"
@@ -17,6 +17,10 @@ import (
 	"github.com/infobloxopen/atlas-app-toolkit/auth"
 	"github.com/infobloxopen/atlas-app-toolkit/gateway"
 	"github.com/infobloxopen/atlas-app-toolkit/requestid"
+)
+
+const (
+	valueUndefined = "undefined"
 )
 
 type gwLogCfg struct {
@@ -139,7 +143,8 @@ func GatewayLoggingInterceptor(logger *logrus.Logger, opts ...GWLogOption) grpc.
 			if accountID, err := auth.GetAccountID(metadata.NewIncomingContext(ctx, md), cfg.acctIDKeyfunc); err == nil {
 				fields[auth.MultiTenancyField] = accountID
 			} else {
-				logger.Error(err)
+				logger.Info(err)
+				fields[auth.MultiTenancyField] = valueUndefined
 			}
 		}
 
