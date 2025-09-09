@@ -1,10 +1,8 @@
-FROM cgr.dev/chainguard/wolfi-base:latest
+FROM gcr.io/distroless/static-debian12:nonroot-amd64
 
 COPY bin/pubsub-sub /usr/local/bin/pubsub-sub
 
-# Allows to verify certificates
-RUN apk update --no-cache && apk add --no-cache ca-certificates
-
-RUN apk upgrade
+# Run as non-root user
+USER nonroot
 
 ENTRYPOINT ["/usr/local/bin/pubsub-sub"]
