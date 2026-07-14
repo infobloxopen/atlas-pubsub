@@ -5,9 +5,12 @@ metadata:
   name: pubsub
   namespace: {{ .Release.Namespace }}
   {{- $saAnnotations := deepCopy (.Values.serviceAccount.annotations | default dict) }}
-  {{- $_ := set $saAnnotations "eks.amazonaws.com/role-arn" (tpl (.Values.serviceAccount.roleArn | default "") $) }}
+  {{- $roleArn := tpl (.Values.serviceAccount.roleArn | default "") $ }}
+  {{- if $roleArn }}
+  {{- $_ := set $saAnnotations "eks.amazonaws.com/role-arn" $roleArn }}
+  {{- end }}
   annotations:
-    {{- toYaml $saAnnotations | nindent 4 }}
+  {{- toYaml $saAnnotations | nindent 4 }}
   {{- with (tpl (.Values.imagePullSecretsName | default "") $) }}
 imagePullSecrets:
 - name: {{ . }}
