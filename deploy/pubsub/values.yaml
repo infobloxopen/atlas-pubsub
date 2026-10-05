@@ -19,7 +19,17 @@ rbac:
 # name to attach one; only rendered when non-empty.
 imagePullSecretsName: ""
 
-replicaCount: 1
+# Run 2 replicas so a single voluntary node disruption (e.g. Karpenter
+# consolidation) never drops pubsub to zero endpoints.
+replicaCount: 2
+
+# PDB so Karpenter/drain evict replicas one at a time, keeping >=1 endpoint.
+# If you set replicaCount: 1, also set enabled: false (a minAvailable: 1 PDB
+# over a single replica blocks that node from draining).
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+  # maxUnavailable: 1
 
 # additional annotations to add to the pods
 podAnnotations:
