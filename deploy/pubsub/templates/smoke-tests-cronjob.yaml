@@ -1,0 +1,128 @@
+{{- if .Values.smokeTests.enabled }}
+{{- $fullname := include "pubsub.fullname" . }}
+{{- /* CronJob names are capped at 52 chars and the suffix below adds 17; keep the fullname at 35 or less. */ -}}
+{{- if gt (len $fullname) 35 }}
+{{- fail (printf "smokeTests: fullname %q is %d chars; must be 35 or fewer for the smoke-hr-watcher CronJob name" $fullname (len $fullname)) }}
+{{- end }}
+# Watches the installed HelmRelease chart version (status.history[0].chartVersion, the version Flux actually applied). On change: delete the old k6 Job, apply a fresh one from the
+# job-template ConfigMap (chart version baked in) and only then advance the checkpoint. Unchanged,
+# not-Ready (or stale-generation) releases and a still-running Job exit 0 without advancing it.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $fullname }}-smoke-hr-watcher
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: k6-smoke-tests
+    app.kubernetes.io/part-of: pubsub
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: hr-watcher
+spec:
+  schedule: {{ .Values.smokeTests.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      # Hard stop so a hung kubectl call cannot hold the CronJob (concurrencyPolicy Forbid) indefinitely.
+      activeDeadlineSeconds: 240
+      ttlSecondsAfterFinished: 600
+      template:
+        metadata:
+          annotations:
+            linkerd.io/inject: disabled
+          labels:
+            app.kubernetes.io/name: k6-smoke-tests
+            app.kubernetes.io/part-of: pubsub
+            app.kubernetes.io/instance: {{ .Release.Name }}
+            app.kubernetes.io/component: hr-watcher
+        spec:
+          serviceAccountName: {{ $fullname }}-smoke-sa
+          restartPolicy: Never
+          containers:
+            - name: watcher
+              image: {{ required "smokeTests.kubectlImage is required when smokeTests.enabled" .Values.smokeTests.kubectlImage }}
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
+                seccompProfile:
+                  type: RuntimeDefault
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+
+                  # Every kubectl call is bounded by coreutils timeout, so a stalled API request fails the tick instead of hanging it.
+                  # NOTE: kubectl --request-timeout makes this kubectl image ignore the in-cluster config, so each call is bounded with
+                  # coreutils timeout instead (present in the pinned kubectl image; if smokeTests.kubectlImage is changed it must ship timeout).
+                  # Budget: 6 calls x 20s + delete 45s = 165s, inside the 240s activeDeadlineSeconds.
+                  kubectl() { command timeout 20 kubectl "$@"; }
+
+                  HR_NAME={{ .Values.smokeTests.helmRelease.name | quote }}
+                  HR_NAMESPACE={{ .Values.smokeTests.helmRelease.namespace | quote }}
+                  STATE_CM={{ printf "%s-smoke-state" $fullname | quote }}
+                  TEMPLATE_CM={{ printf "%s-smoke-job-template" $fullname | quote }}
+                  JOB_NAME={{ printf "%s-smoke-k6" $fullname | quote }}
+                  JOB_NAMESPACE={{ .Release.Namespace | quote }}
+
+                  # One snapshot of the HelmRelease so version, generation and Ready come from the same read.
+                  # Ready=True only describes the CURRENT spec when its observedGeneration equals
+                  # metadata.generation; right after a chart bump Ready can still be the previous generation.
+                  SNAP=$(kubectl get hr "${HR_NAME}" -n "${HR_NAMESPACE}" -o jsonpath='{.metadata.generation}|{.status.conditions[?(@.type=="Ready")].observedGeneration}|{.status.conditions[?(@.type=="Ready")].status}|{.status.history[0].chartVersion}' 2>/dev/null) || true
+                  GENERATION=$(printf '%s' "${SNAP}" | cut -d'|' -f1)
+                  OBSERVED_GENERATION=$(printf '%s' "${SNAP}" | cut -d'|' -f2)
+                  DEPLOY_STATUS=$(printf '%s' "${SNAP}" | cut -d'|' -f3)
+                  CURRENT_VERSION=$(printf '%s' "${SNAP}" | cut -d'|' -f4)
+                  if [ -z "${CURRENT_VERSION}" ]; then
+                    echo "ERROR: Could not read HelmRelease chart version"
+                    exit 1
+                  fi
+                  case "${CURRENT_VERSION}" in
+                    *[!A-Za-z0-9._+-]*) echo "ERROR: Unexpected characters in chart version: ${CURRENT_VERSION}"; exit 1 ;;
+                  esac
+
+                  if [ "${DEPLOY_STATUS}" != "True" ] || [ "${OBSERVED_GENERATION}" != "${GENERATION}" ]; then
+                    echo "HelmRelease not Ready for its current generation (ready=${DEPLOY_STATUS} observedGeneration=${OBSERVED_GENERATION} generation=${GENERATION}). Skipping."
+                    exit 0
+                  fi
+
+                  LAST_VERSION=$(kubectl get configmap "${STATE_CM}" -n "${JOB_NAMESPACE}" -o jsonpath='{.data.last-chart-version}' 2>/dev/null || echo "")
+                  if [ -z "${LAST_VERSION}" ]; then
+                    echo "ERROR: State ConfigMap ${STATE_CM} not found"
+                    exit 1
+                  fi
+
+                  if [ "${CURRENT_VERSION}" = "${LAST_VERSION}" ]; then
+                    echo "Version unchanged. No action needed."
+                    exit 0
+                  fi
+
+                  # Never kill a run in progress (it can hold a probe that would fail the next setup).
+                  # Defer: the checkpoint is not advanced, so the next tick retries.
+                  # --ignore-not-found: a missing Job is fine (empty output); a real API error fails the tick under set -e.
+                  # Busy = the Job exists and has no Complete/Failed condition (also covers the backoff gap between retries).
+                  JOB_STATE=$(kubectl get job "${JOB_NAME}" -n "${JOB_NAMESPACE}" --ignore-not-found -o jsonpath='{.metadata.name}:{.status.conditions[?(@.status=="True")].type}')
+                  if [ -n "${JOB_STATE}" ]; then
+                    case "${JOB_STATE}" in
+                      *Complete*|*Failed*) ;;
+                      *) echo "k6 Job ${JOB_NAME} is still running. Deferring ${CURRENT_VERSION}."
+                         exit 0 ;;
+                    esac
+                  fi
+
+                  # Render the Job with the observed (installed) version baked in (not read back from the state ConfigMap).
+                  JOB_YAML=$(kubectl get configmap "${TEMPLATE_CM}" -n "${JOB_NAMESPACE}" -o jsonpath='{.data.k6-runner-job\.yaml}' | sed "s|__CHART_VERSION__|${CURRENT_VERSION}|g")
+                  if [ -z "${JOB_YAML}" ]; then
+                    echo "ERROR: Job template ${TEMPLATE_CM} is empty"
+                    exit 1
+                  fi
+
+                  command timeout 45 kubectl delete job "${JOB_NAME}" -n "${JOB_NAMESPACE}" --ignore-not-found=true --wait=true --timeout=40s
+                  printf '%s\n' "${JOB_YAML}" | kubectl apply -f -
+
+                  # Advance the checkpoint only after the Job was created, so a failed launch is retried.
+                  # (If this patch itself fails the version runs again next tick: at-least-once.)
+                  kubectl patch configmap "${STATE_CM}" -n "${JOB_NAMESPACE}" --type merge -p "{\"data\":{\"last-chart-version\":\"${CURRENT_VERSION}\"}}"
+{{- end }}

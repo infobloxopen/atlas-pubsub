@@ -96,9 +96,39 @@ global:
       # Region, derived from aws.region by default and overridden by the real
       # cluster fact when available. Consumed via service.aws_region.
       region: '{{ .Values.aws.region | default "" }}'
+      # Cluster name (e.g. us-dev-5), set by the DC overlay or at install time. Consumed only by the
+      # k6 smoke tests (smokeTests.cluster defaults to it). Empty by default.
+      name: ""
     services:
       registry:
         # Empty => images pull from Docker Hub (image.repository as-is).
         # The internal base sets this to the internal registry host, which the
         # "pubsub.image" helper prepends in front of the infobloxcto org.
         host: ""
+
+# k6 smoke tests (chart-embedded). Off by default: with smokeTests.enabled=false no smoke-test object is rendered,
+# so the default chart output is unchanged. Read-only suite; see k6_smoke_tests/smoke-test-plan.json.
+smokeTests:
+  enabled: false
+  schedule: "*/5 * * * *"
+  # Cluster the test runs against and tags metrics with. Empty = this chart's own cluster (pubsub.env, from
+  # global.ib0.cluster.name); set only to override. Must be in allowedClusters (setup() guard in
+  # k6_smoke_tests/k6/main.js), which is the only hand-set cluster value.
+  cluster: ""
+  allowedClusters: ""   # comma-separated clusters the suite may run against (required when smokeTests.enabled)
+  # Internal registry/endpoint values are intentionally NOT defaulted (this chart is open source). Required when
+  # smokeTests.enabled=true; supply them in the internal overlay / install command.
+  kubectlImage: ""   # kubectl image that ships coreutils `timeout`
+  k6Image: ""        # grafana/k6 image
+
+  # HelmRelease whose chart version drives re-runs (watched in vela-system).
+  helmRelease:
+    name: pubsub
+    namespace: vela-system
+
+  cortex:
+    url: ""   # Prometheus remote-write push URL (required when smokeTests.enabled)
+    orgId: ""   # Cortex tenant id (required when smokeTests.enabled)
+
+  dashboard:
+    enabled: true

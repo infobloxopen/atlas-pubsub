@@ -1,0 +1,27 @@
+{{- if .Values.smokeTests.enabled }}
+{{- $stateName := printf "%s-smoke-state" (include "pubsub.fullname" .) }}
+{{- /* Preserve the checkpoint across helm upgrades: the watcher advances last-chart-version out-of-band with kubectl patch,
+       so a plain re-render would reset it to "initial" and re-run the suite on every upgrade. Keep the live value when the
+       ConfigMap exists; `helm template` (no cluster) has no lookup result and renders "initial". */ -}}
+{{- $existing := lookup "v1" "ConfigMap" .Release.Namespace $stateName }}
+{{- $last := "initial" }}
+{{- if and $existing $existing.data }}
+{{- if index $existing.data "last-chart-version" }}
+{{- $last = index $existing.data "last-chart-version" }}
+{{- end }}
+{{- end }}
+# Watcher state. "initial" never matches a real chart version, so the first watcher tick runs the test.
+# On upgrade the live value is kept (see the lookup above); on first install it starts as "initial".
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $stateName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: k6-smoke-tests
+    app.kubernetes.io/part-of: pubsub
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: state
+data:
+  last-chart-version: {{ $last | quote }}
+{{- end }}

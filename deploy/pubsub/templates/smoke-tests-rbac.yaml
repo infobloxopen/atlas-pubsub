@@ -1,0 +1,152 @@
+{{- if .Values.smokeTests.enabled }}
+{{- $fullname := include "pubsub.fullname" . }}
+# Two ServiceAccounts, split by least privilege:
+#   - watcher  (<fullname>-smoke-sa)     : CronJob that reads the HelmRelease, state ConfigMap and manages the k6 Job.
+#   - k6 test  (<fullname>-smoke-k6-sa)  : the k6 Job pod. Needs get on the Deployment (sc01) and list on pods in this
+#                                           namespace (sc02 discovers pod IPs). It holds no write verbs.
+# The k6 pod mounts its token (automountServiceAccountToken: true) for those reads.
+# The watcher SA never runs the test, and the test SA has nothing to do with the state ConfigMap or Jobs.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $fullname }}-smoke-sa
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: k6-smoke-tests
+    app.kubernetes.io/part-of: pubsub
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: automation
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $fullname }}-smoke-k6-sa
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: k6-smoke-tests
+    app.kubernetes.io/part-of: pubsub
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: k6-runner
+---
+# k6 test: get the Deployment only (resourceName pinned) and list pods in the release namespace only.
+# list cannot be pinned by name; pods are read-only and the Role is namespace-scoped. No watch, no writes.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $fullname }}-smoke-k6-reader
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: k6-smoke-tests
+    app.kubernetes.io/part-of: pubsub
+    app.kubernetes.io/instance: {{ .Release.Name }}
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["{{ $fullname }}"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $fullname }}-smoke-k6-reader
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: k6-smoke-tests
+    app.kubernetes.io/part-of: pubsub
+    app.kubernetes.io/instance: {{ .Release.Name }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $fullname }}-smoke-k6-reader
+subjects:
+  - kind: ServiceAccount
+    name: {{ $fullname }}-smoke-k6-sa
+    namespace: {{ .Release.Namespace }}
+---
+# Watcher: read the HelmRelease whose chart version triggers a re-run.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $fullname }}-smoke-hr-reader
+  namespace: {{ .Values.smokeTests.helmRelease.namespace }}
+  labels:
+    app.kubernetes.io/name: k6-smoke-tests
+    app.kubernetes.io/part-of: pubsub
+    app.kubernetes.io/instance: {{ .Release.Name }}
+rules:
+  - apiGroups: ["helm.toolkit.fluxcd.io"]
+    resources: ["helmreleases"]
+    resourceNames: [{{ .Values.smokeTests.helmRelease.name | quote }}]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $fullname }}-smoke-hr-reader
+  namespace: {{ .Values.smokeTests.helmRelease.namespace }}
+  labels:
+    app.kubernetes.io/name: k6-smoke-tests
+    app.kubernetes.io/part-of: pubsub
+    app.kubernetes.io/instance: {{ .Release.Name }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $fullname }}-smoke-hr-reader
+subjects:
+  - kind: ServiceAccount
+    name: {{ $fullname }}-smoke-sa
+    namespace: {{ .Release.Namespace }}
+---
+# Watcher: state ConfigMap (read + patch, named only) and job-template ConfigMap (read, named only);
+# Jobs in the release namespace (create/delete the k6 Job).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $fullname }}-smoke-watcher
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: k6-smoke-tests
+    app.kubernetes.io/part-of: pubsub
+    app.kubernetes.io/instance: {{ .Release.Name }}
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["{{ $fullname }}-smoke-state", "{{ $fullname }}-smoke-job-template"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["{{ $fullname }}-smoke-state"]
+    verbs: ["patch"]
+  # create/list/watch cannot be pinned by name (create has no object name yet; list/watch are collection verbs).
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "list", "watch"]
+  # get/delete pinned to the k6 Job name the watcher acts on (JOB_NAME in smoke-tests-cronjob.yaml,
+  # metadata.name in smoke-tests-job-template.yaml). kubectl apply GETs the object before create, hence get.
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    resourceNames: ["{{ $fullname }}-smoke-k6"]
+    verbs: ["get", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $fullname }}-smoke-watcher
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: k6-smoke-tests
+    app.kubernetes.io/part-of: pubsub
+    app.kubernetes.io/instance: {{ .Release.Name }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $fullname }}-smoke-watcher
+subjects:
+  - kind: ServiceAccount
+    name: {{ $fullname }}-smoke-sa
+    namespace: {{ .Release.Namespace }}
+{{- end }}

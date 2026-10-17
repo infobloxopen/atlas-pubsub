@@ -1,0 +1,24 @@
+{{- if and .Values.smokeTests.enabled .Values.smokeTests.dashboard.enabled }}
+# Grafana dashboard (sidecar-provisioned via integreatly operator). JSON lives in files/ and is
+# templated with tpl so the cluster value is filled in at render time. Legend braces are escaped in the JSON.
+apiVersion: integreatly.org/v1alpha1
+kind: GrafanaDashboard
+metadata:
+  name: {{ include "pubsub.fullname" . }}-smoke-tests-dashboard
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: grafana
+    app.kubernetes.io/name: k6-smoke-tests
+    app.kubernetes.io/part-of: pubsub
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: grafana-dashboard
+    integreatly.org/operator: appinfra-grafana
+spec:
+  customFolderName: "K6 Smoke Tests"
+  datasources:
+    - inputName: "DS_PROMETHEUS"
+      datasourceName: "Prometheus"
+  environment: {{ include "pubsub.smokeCluster" . | quote }}
+  json: |-
+{{ tpl (.Files.Get "files/pubsub-smoke-tests-dashboard.json") . | indent 4 }}
+{{- end }}

@@ -1,0 +1,20 @@
+{{- if .Values.smokeTests.enabled }}
+# k6 test tree embedded as a ConfigMap. Keys are the path relative to k6_smoke_tests/k6/ with "/"
+# replaced by "-", so helpers/utils.js -> helpers-utils.js and tests/x.test.js -> tests-x.test.js.
+# The k6 Job's preamble (smoke-tests-job-template.yaml) rebuilds /work/{config,helpers,tests} from these keys.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pubsub.fullname" . }}-smoke-k6-scripts
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: k6-smoke-tests
+    app.kubernetes.io/part-of: pubsub
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: k6-tests
+data:
+{{- range $path, $_ := .Files.Glob "k6_smoke_tests/k6/**" }}
+  {{ trimPrefix "k6_smoke_tests/k6/" $path | replace "/" "-" }}: |-
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}
+{{- end }}

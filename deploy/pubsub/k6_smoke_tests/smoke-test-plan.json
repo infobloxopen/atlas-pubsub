@@ -1,0 +1,80 @@
+{
+  "service_summary": {
+    "service_name": "pubsub",
+    "service_type": "go_grpc_pubsub_service_sns_sqs",
+    "chart": "pubsub",
+    "repo": "infobloxopen/atlas-pubsub (chart dir deploy/pubsub/)",
+    "jira": "PTOCP-6715",
+    "helm_release": {
+      "name": "pubsub",
+      "namespace": "vela-system"
+    },
+    "workload": {
+      "namespace": "pubsub",
+      "deployment": "pubsub",
+      "replicas_chart_default": 2,
+      "replicas_observed_us_dev_5": 3,
+      "pod_labels": "app.kubernetes.io/instance=pubsub,app.kubernetes.io/name=pubsub (no component label)",
+      "service": "pubsub (ClusterIP, port 80 -> grpc 8080)",
+      "pod_internal_ports": { "internal": 5555 },
+      "probes": { "readiness": "/ready on 5555", "liveness": "/health on 5555" },
+      "unmeshed_k6_job": true,
+      "meshed_service_pods": true
+    },
+    "description": "Go pubsub service: a gRPC data plane on the Service (port 80 -> 8080) that publishes and subscribes through AWS SNS/SQS, plus an internal HTTP server on pod port 5555 serving /health (liveness) and /ready (readiness). The internal port is not exposed by the Service, so it is reached by pod IP.",
+    "purpose": "Deployment readiness and pod-internal health. Read-only: the suite never invokes gRPC, never calls Publish or Subscribe (both reach SNS/SQS and would create real traffic) and never changes Deployment or pod state.",
+    "auth_model": "The service has no HTTP surface on its Service, so there is no credential-bearing request. The Kubernetes reads use the k6 Job ServiceAccount (get on the Deployment named pubsub, list pods in the namespace). Pod-internal GETs send no credentials."
+  },
+  "endpoint_catalog": {
+    "source": "service facts verified read-only against us-dev-5 on 2026-10-17 (kubectl get on Deployment, pods, Service, PDB and HelmRelease; one kubectl port-forward to one pod, GET /health and /ready only)",
+    "endpoints": [
+      { "name": "deployment", "method": "GET", "path": "/apis/apps/v1/namespaces/pubsub/deployments/pubsub", "category": "kubernetes_read", "auth_type": "ServiceAccount token, get on the Deployment (resourceNames pinned)" },
+      { "name": "pods", "method": "GET", "path": "/api/v1/namespaces/pubsub/pods?labelSelector=app.kubernetes.io/name=pubsub,app.kubernetes.io/instance=pubsub,app.kubernetes.io/component notin (k6-runner,hr-watcher)", "category": "kubernetes_read", "auth_type": "ServiceAccount token, list pods in the namespace" },
+      { "name": "health", "method": "GET", "path": "<podIP>:5555/health", "category": "observability", "auth_type": "none (pod-internal)", "observed": 200 },
+      { "name": "ready", "method": "GET", "path": "<podIP>:5555/ready", "category": "observability", "auth_type": "none (pod-internal)", "observed": 200 }
+    ]
+  },
+  "smoke_scenarios": [
+    {
+      "scenario_id": "sc01",
+      "type": "positive",
+      "name": "deployment_ready",
+      "writes": false,
+      "auth_type": "Kubernetes ServiceAccount token (get on the pubsub Deployment, resourceNames pinned)",
+      "expected": [
+        "GET the Deployment returns 200",
+        "status.readyReplicas >= 1 and == spec.replicas (re-read until a 90s wall-clock deadline while a rollout settles)",
+        "status.updatedReplicas >= spec.replicas",
+        "status.replicas == spec.replicas (no old ReplicaSet pods)",
+        "status.observedGeneration == metadata.generation",
+        "spec.paused is not true"
+      ],
+      "notes": "spec.replicas is the chart replicaCount (default 2; us-dev-5 runs 3). The suite compares against the live spec, so it does not hard-code a count.",
+      "cleanup_requirements": []
+    },
+    {
+      "scenario_id": "sc02",
+      "type": "positive",
+      "name": "internal_health",
+      "writes": false,
+      "auth_type": "Kubernetes ServiceAccount token (list pods in pubsub); pod-internal HTTP without credentials",
+      "expected": [
+        "at least one pod matching the selector is Running, Ready, has a podIP and no deletionTimestamp",
+        "on every such pod: GET :5555/health returns 200",
+        "on every such pod: GET :5555/ready returns 200"
+      ],
+      "cleanup_requirements": []
+    }
+  ],
+  "not_covered": [
+    "gRPC on 8080 (all RPCs). Publish and Subscribe reach SNS/SQS and would create real traffic; every RPC is excluded by design.",
+    "SNS/SQS delivery and the topic or queue path. Delivery is external and must not be triggered by a smoke test.",
+    "Negative HTTP probes (unauthenticated rejection, unknown route). The service exposes no HTTP surface on its Service, so no negative endpoint exists. Negative coverage is limited to the local negative control (bogus Deployment name fails sc01 and the threshold).",
+    "Per-pod sc01 readiness beyond the Deployment status (the suite reads Deployment status, not each pod's container state)."
+  ],
+  "metrics": {
+    "pushed_to": "Cortex (experimental-prometheus-rw) via the k6 Job",
+    "series": ["k6_smoke_overall_result_rate", "k6_smoke_group_result_rate"],
+    "thresholds": "checks rate >= 0.95; smoke_overall_result rate >= 0.95; iterations count >= 1 (an interrupted run cannot pass)"
+  }
+}
